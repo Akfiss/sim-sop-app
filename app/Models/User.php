@@ -2,47 +2,45 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $table = 'tb_users';
+    protected $primaryKey = 'id_user';
+    protected $keyType = 'string';
+    public $incrementing = false;
+    public $timestamps = false;
+
     protected $fillable = [
-        'name',
+        'id_user',
+        'username',
         'email',
         'password',
+        'nama_lengkap',
+        'role',
+        'is_active',
+        'id_direktorat'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
+    // Sembunyikan password saat data user dipanggil API/JSON
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    // Casting tipe data otomatis
+    protected $casts = [
+        'is_active' => 'boolean',
+        'password' => 'hashed', // Fitur baru Laravel untuk otomatis hash password
+    ];
+
+    // Relasi ke Unit Kerja (Many to Many)
+    public function units()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->belongsToMany(UnitKerja::class, 'tb_unit_user', 'id_user', 'id_unit');
     }
 }

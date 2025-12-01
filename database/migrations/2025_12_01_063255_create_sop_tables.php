@@ -57,7 +57,7 @@ return new class extends Migration
         Schema::create('tb_riwayat_sop', function (Blueprint $table) {
             $table->integer('id_riwayat')->autoIncrement();
             $table->text('catatan')->nullable();
-            $table->enum('aksi', ['PENGAJUAN', 'DISETUJUI', 'REVISI', 'UPLOAD_ULANG']); // Sesuaikan enum diagram vs sql
+            $table->enum('aksi', ['PENGAJUAN', 'PERSETUJUAN', 'REVISI', 'UPLOAD_ULANG']);
             $table->string('dokumen_path', 255)->nullable();
             $table->dateTime('created_at')->useCurrent();
 
