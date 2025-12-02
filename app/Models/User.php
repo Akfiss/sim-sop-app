@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Filament\Models\Contracts\FilamentUser; // 1. Import Interface
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 // 2. Implementasikan Interface FilamentUser
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasName
 {
     use Notifiable;
 

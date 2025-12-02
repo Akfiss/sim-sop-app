@@ -1,0 +1,80 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\DirektoratResource\Pages;
+use App\Models\Direktorat;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+
+class DirektoratResource extends Resource
+{
+    protected static ?string $model = Direktorat::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-building-office'; // Ikon gedung
+    protected static ?string $navigationLabel = 'Data Direktorat';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                // Input ID Direktorat (Manual karena CHAR)
+                Forms\Components\TextInput::make('id_direktorat')
+                    ->label('Kode Direktorat')
+                    ->required()
+                    ->maxLength(5)
+                    ->unique(ignoreRecord: true), // Cek unik kecuali saat edit
+
+                // Input Nama Direktorat
+                Forms\Components\TextInput::make('nama_direktorat')
+                    ->label('Nama Direktorat')
+                    ->required()
+                    ->maxLength(100),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('id_direktorat')
+                    ->label('Kode')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('nama_direktorat')
+                    ->label('Nama Direktorat')
+                    ->searchable(),
+            ])
+            ->filters([
+                //
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
+
+    // ... function getRelations dan getPages biarkan default
+    public static function getRelations(): array
+    {
+        return [];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListDirektorats::route('/'),
+            'create' => Pages\CreateDirektorat::route('/create'),
+            'edit' => Pages\EditDirektorat::route('/{record}/edit'),
+        ];
+    }
+}
