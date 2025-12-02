@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser; // 1. Import Interface
+use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+// 2. Implementasikan Interface FilamentUser
+class User extends Authenticatable implements FilamentUser
 {
     use Notifiable;
 
@@ -16,31 +19,30 @@ class User extends Authenticatable
     public $timestamps = false;
 
     protected $fillable = [
-        'id_user',
-        'username',
-        'email',
-        'password',
-        'nama_lengkap',
-        'role',
-        'is_active',
-        'id_direktorat'
+        'id_user', 'username', 'email', 'password',
+        'nama_lengkap', 'role', 'is_active', 'id_direktorat'
     ];
 
-    // Sembunyikan password saat data user dipanggil API/JSON
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
-    // Casting tipe data otomatis
     protected $casts = [
         'is_active' => 'boolean',
-        'password' => 'hashed', // Fitur baru Laravel untuk otomatis hash password
+        'password' => 'hashed',
     ];
 
-    // Relasi ke Unit Kerja (Many to Many)
-    public function units()
+    // 3. Wajib: Logika siapa yang boleh akses Dashboard
+    public function canAccessPanel(Panel $panel): bool
     {
-        return $this->belongsToMany(UnitKerja::class, 'tb_unit_user', 'id_user', 'id_unit');
+        // Contoh: Hanya yang statusnya active dan role tertentu
+        // return $this->is_active && $this->role === 'SUPER ADMIN';
+
+        // Untuk tahap development, kita izinkan semua user aktif login:
+        return $this->is_active;
+    }
+
+    // 4. Opsional: Beritahu Filament kolom mana yang jadi "Nama Tampilan"
+    public function getFilamentName(): string
+    {
+        return $this->nama_lengkap;
     }
 }
