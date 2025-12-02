@@ -3,41 +3,61 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes; // Tambahkan ini karena ada softDeletes di migration
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class DokumenSop extends Model
 {
-    use SoftDeletes; // Aktifkan fitur soft delete
+    use SoftDeletes;
 
     protected $table = 'tb_dokumen_sop';
     protected $primaryKey = 'id_sop';
     protected $keyType = 'string';
     public $incrementing = false;
 
-    // CATATAN PENTING:
-    // Di migration SOP, Anda menggunakan $table->timestamps().
-    // Jadi, JANGAN set $timestamps = false di sini. Biarkan default (true).
+    // Pastikan timestamps menyala karena di migration ada created_at
+    public $timestamps = true;
 
     protected $fillable = [
-        'id_sop',
-        'nomor_sk',
-        'judul_sop',
-        'kategori_sop',
-        'file_path',
-        'tgl_pengesahan',
-        'tgl_berlaku',
-        'tgl_review_berikutnya',
-        'tgl_kadaluarsa',
-        'status',
-        'id_unit_pemilik',
-        'created_by',
-        'updated_by',
-        'deleted_by'
+        'id_sop', 'nomor_sk', 'judul_sop', 'kategori_sop',
+        'file_path', 'tgl_pengesahan', 'tgl_berlaku',
+        'tgl_review_berikutnya', 'tgl_kadaluarsa', 'status',
+        'id_unit_pemilik', 'created_by', 'updated_by', 'deleted_by'
     ];
 
-    // Relasi ke Unit Pemilik
+    // Otomatis Generate ID saat Create (agar user tidak perlu isi ID manual)
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            // Contoh ID: SOP-12345 (Random 5 string)
+            if (empty($model->id_sop)) {
+                $model->id_sop = 'SOP-' . strtoupper(Str::random(5));
+            }
+        });
+    }
+
+    // Relasi Pemilik (One to Many)
     public function unitPemilik()
     {
         return $this->belongsTo(UnitKerja::class, 'id_unit_pemilik', 'id_unit');
+    }
+
+    // Relasi Pembuat (One to Many)
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id_user');
+    }
+
+    // Relasi SOP AP - Unit Terkait (Many to Many)
+    // Lewat tabel pivot: tb_sop_unit_terkait
+    public function unitTerkait()
+    {
+        return $this->belongsToMany(
+            UnitKerja::class,
+            'tb_sop_unit_terkait',
+            'id_sop',
+            'id_unit'
+        );
     }
 }

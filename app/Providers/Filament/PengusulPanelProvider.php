@@ -18,6 +18,8 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\View\PanelsRenderHook; // <--- Import Ini
+use Illuminate\Support\Facades\Blade; // <--- Import Ini
 
 class PengusulPanelProvider extends PanelProvider
 {
@@ -51,6 +53,11 @@ class PengusulPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE, // Posisi: Sebelum menu user (pojok kanan)
+                fn (): string => Blade::render('@livewire(\'lonceng-notifikasi\')')
+            )
+            //->viteTheme(theme: 'resources/css/app.css')
             ->authMiddleware([
                 Authenticate::class,
             ]);
