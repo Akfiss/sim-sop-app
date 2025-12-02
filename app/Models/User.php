@@ -8,7 +8,6 @@ use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-// 2. Implementasikan Interface FilamentUser
 class User extends Authenticatable implements FilamentUser, HasName
 {
     use Notifiable;
@@ -31,19 +30,55 @@ class User extends Authenticatable implements FilamentUser, HasName
         'password' => 'hashed',
     ];
 
-    // 3. Wajib: Logika siapa yang boleh akses Dashboard
+    // --- LOGIKA PINTU MASUK (MULTI PANEL) ---
     public function canAccessPanel(Panel $panel): bool
     {
-        // Contoh: Hanya yang statusnya active dan role tertentu
-        // return $this->is_active && $this->role === 'SUPER ADMIN';
+        // 1. Cek apakah user aktif?
+        if (!$this->is_active) {
+            return false;
+        }
 
-        // Untuk tahap development, kita izinkan semua user aktif login:
-        return $this->is_active;
+        // 2. Logika Panel ADMIN (Super Admin & Verifikator)
+        if ($panel->getId() === 'admin') {
+            return $this->role === 'SUPER ADMIN';
+        }
+
+        // 3. Logika Panel PENGUSUL
+        if ($panel->getId() === 'pengusul') {
+            return $this->role === 'PENGUSUL';
+        }
+
+        // 4. Logika Panel DIREKSI
+        if ($panel->getId() === 'direksi') {
+            return $this->role === 'DIREKSI';
+        }
+
+        // 5. Logika Panel VERIFIKATOR
+        if ($panel->getId() === 'verifikator') {
+            return $this->role === 'VERIFIKATOR';
+        }
+
+        // Default: Tolak akses
+        return false;
     }
 
-    // 4. Opsional: Beritahu Filament kolom mana yang jadi "Nama Tampilan"
+    // --- AGAR NAMA MUNCUL DI POJOK KANAN ---
     public function getFilamentName(): string
     {
         return $this->nama_lengkap;
+    }
+
+    // --- RELASI KE TABEL LAIN ---
+
+    // Relasi ke Direktorat (One to Many)
+    public function direktorat()
+    {
+        return $this->belongsTo(Direktorat::class, 'id_direktorat', 'id_direktorat');
+    }
+
+    // Relasi ke Unit Kerja (Many to Many)
+    public function units()
+    {
+        return $this->belongsToMany(UnitKerja::class, 'tb_unit_user', 'id_user', 'id_unit');
     }
 }
