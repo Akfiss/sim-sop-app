@@ -110,23 +110,6 @@ class DokumenSopResource extends Resource
 
                 Forms\Components\Hidden::make('status')
                     ->default('DALAM REVIEW'),
-
-                Forms\Components\Section::make('Informasi Utama')->schema([
-                    Forms\Components\TextInput::make('judul_sop')->required()->maxLength(255)->columnSpanFull(),
-                    Forms\Components\TextInput::make('nomor_sk')->maxLength(50),
-                    Forms\Components\Select::make('kategori_sop')
-                        ->options(['SOP' => 'SOP', 'SOP_AP' => 'SOP AP'])
-                        ->live()->afterStateUpdated(fn (Forms\Set $set) => $set('unitTerkait', [])),
-                    Forms\Components\Select::make('unitTerkait')
-                        ->relationship('unitTerkait', 'nama_unit')->multiple()->preload()
-                        ->visible(fn (Forms\Get $get) => $get('kategori_sop') === 'SOP_AP')
-                        ->columnSpanFull(),
-                ])->columns(2),
-                Forms\Components\Section::make('File')->schema([
-                    Forms\Components\FileUpload::make('file_path')->disk('public')->directory('dokumen-sop')->acceptedFileTypes(['application/pdf'])->required()->columnSpanFull(),
-                ]),
-                Forms\Components\Hidden::make('created_by')->default(fn()=>Auth::user()->id_user),
-                Forms\Components\Hidden::make('id_unit_pemilik')->default(fn()=>Auth::user()->units->first()?->id_unit),
             ]);
 
     }
