@@ -16,6 +16,10 @@ class DirektoratResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office'; // Ikon gedung
     protected static ?string $navigationLabel = 'Data Direktorat';
+    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?int $navigationSort = 1;
+    protected static ?string $modelLabel = 'Direktorat';
+    protected static ?string $pluralModelLabel = 'Direktorat';
 
     public static function form(Form $form): Form
     {
