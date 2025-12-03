@@ -27,4 +27,10 @@ class UnitKerja extends Model
     {
         return $this->belongsToMany(User::class, 'tb_unit_user', 'id_unit', 'id_user');
     }
+
+    // Relasi One-to-Many: Satu Unit bisa memiliki banyak Dokumen SOP
+    public function dokumenSop()
+    {
+        return $this->hasMany(DokumenSop::class, 'id_unit_pemilik', 'id_unit');
+    }
 }

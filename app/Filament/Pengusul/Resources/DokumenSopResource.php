@@ -49,7 +49,7 @@ class DokumenSopResource extends Resource
                             ->label('Kategori SOP')
                             ->options([
                                 'SOP' => 'SOP (Internal Unit)',
-                                'SOP_AP' => 'SOP AP (Administrasi Pemerintahan / Lintas Unit)',
+                                'SOP_AP' => 'SOP AP (Administrasi Lintas Unit)',
                             ])
                             ->required()
                             ->live() // Agar form reaktif (munculkan unit terkait)
@@ -70,18 +70,12 @@ class DokumenSopResource extends Resource
                 // SECTION 2: TANGGAL PENTING
                 Forms\Components\Section::make('Validitas Dokumen')
                     ->schema([
-                        // 5. Tanggal Pengesahan
+                        // Tanggal Pengesahan
                         Forms\Components\DatePicker::make('tgl_pengesahan')
                             ->label('Tanggal Pengesahan (TTD)')
                             ->native(false) // Pakai widget datepicker JS yang bagus
                             ->displayFormat('d/m/Y'),
-
-                        // 6. Tanggal Berlaku (TMT)
-                        Forms\Components\DatePicker::make('tgl_berlaku')
-                            ->label('Tanggal Berlaku (TMT)')
-                            ->native(false)
-                            ->displayFormat('d/m/Y'),
-                    ])->columns(2),
+                    ])->columns(1),
 
                 // SECTION 3: UPLOAD FILE
                 Forms\Components\Section::make('File Dokumen')
@@ -149,10 +143,35 @@ class DokumenSopResource extends Resource
                                     ->badge()
                                     ->color('info')
                                     ->placeholder('Internal Unit'),
+                            ]),
+                    ]),
 
+                // Section Validitas (UPDATE DISINI: 3 TANGGAL)
+                Infolists\Components\Section::make('Validitas Dokumen')
+                    ->schema([
+                        Infolists\Components\Grid::make(3)
+                            ->schema([
+                                // 1. Tgl Disahkan (TTD)
                                 Infolists\Components\TextEntry::make('tgl_pengesahan')
-                                    ->label('Disahkan Tanggal')
+                                    ->label('Disahkan (TTD)')
                                     ->date('d F Y')
+                                    ->icon('heroicon-m-pencil-square')
+                                    ->placeholder('-'),
+
+                                // 2. Review Date
+                                Infolists\Components\TextEntry::make('tgl_review_berikutnya')
+                                    ->label('Review Date')
+                                    ->date('d F Y')
+                                    ->icon('heroicon-m-clock')
+                                    ->color('warning')
+                                    ->placeholder('-'),
+
+                                // 3. Expired Date
+                                Infolists\Components\TextEntry::make('tgl_kadaluarsa')
+                                    ->label('Expired Date')
+                                    ->date('d F Y')
+                                    ->icon('heroicon-m-calendar-days')
+                                    ->color('danger')
                                     ->placeholder('-'),
                             ]),
                     ]),
@@ -195,15 +214,7 @@ class DokumenSopResource extends Resource
                         'Diupload: ' . $record->created_at->translatedFormat('d F Y H:i')
                     ),
 
-                // // 2. Nomor SK
-                // Tables\Columns\TextColumn::make('nomor_sk')
-                //     ->label('Nomor SK')
-                //     ->searchable()
-                //     ->placeholder('-') // Jika kosong tampilkan strip
-                //     ->copyable() // Bisa diklik copy
-                //     ->toggleable(),
-
-                // 3. Kategori
+                // 2. Kategori
                 Tables\Columns\TextColumn::make('kategori_sop')
                     ->label('Kategori')
                     ->badge()
@@ -212,7 +223,7 @@ class DokumenSopResource extends Resource
                         'warning' => 'SOP_AP',
                     ]),
 
-                // Unit Terkait (HIDDEN BY DEFAULT)
+                // 3. Unit Terkait (HIDDEN BY DEFAULT)
                 Tables\Columns\TextColumn::make('unitTerkait.nama_unit')
                     ->label('Unit Terkait')
                     ->listWithLineBreaks()
@@ -220,7 +231,7 @@ class DokumenSopResource extends Resource
                     ->limitList(2)
                     ->toggleable(isToggledHiddenByDefault: true), // <--- Ini kuncinya (Hilang di awal)
 
-                // 4. Status (Warna-warni)
+                // 4. Status
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -231,22 +242,22 @@ class DokumenSopResource extends Resource
                         default => 'gray',
                     }),
 
-                // // 5. Unit Terkait (Untuk SOP AP)
-                // Tables\Columns\TextColumn::make('unitTerkait.nama_unit')
-                //     ->label('Unit Terkait')
-                //     ->listWithLineBreaks() // Tampil berderet ke bawah
-                //     ->bulleted() // Pakai bullet point
-                //     ->limitList(3) // Maksimal tampil 3, sisanya "+2 more"
-                //     ->expandableLimitedList() // Bisa diklik untuk lihat semua
-                //     ->placeholder('Internal Unit'),
-
-                // 6. Tanggal Pengesahan
-                Tables\Columns\TextColumn::make('tgl_pengesahan')
-                    ->label('Tgl Pengesahan')
+                // 5. Review Date
+                Tables\Columns\TextColumn::make('tgl_review_berikutnya')
+                    ->label('Review Date')
                     ->date('d M Y')
                     ->sortable()
-                    ->toggleable()
-                    ->placeholder('Belum Disahkan'),
+                    ->placeholder('-')
+                    ->toggleable(),
+
+                // 6. Expired Date
+                Tables\Columns\TextColumn::make('tgl_kadaluarsa')
+                    ->label('Expired Date')
+                    ->date('d M Y')
+                    ->sortable()
+                    ->placeholder('-')
+                    ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->isPast() ? 'danger' : 'success')
+                    ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc') // Urutkan dari yang terbaru
             ->filters([

@@ -31,7 +31,7 @@ class UserResource extends Resource
                 Forms\Components\Section::make('Informasi Akun')
                     ->schema([
                         Forms\Components\TextInput::make('id_user')
-                            ->label('ID User (NIP/NIK)')
+                            ->label('ID User')
                             ->required()
                             ->maxLength(5)
                             ->unique(ignoreRecord: true),
