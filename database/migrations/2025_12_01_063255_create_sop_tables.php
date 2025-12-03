@@ -28,9 +28,9 @@ return new class extends Migration
 
             // Foreign Keys Columns
             $table->char('id_unit_pemilik', 5);
-            $table->char('created_by', 5);
-            $table->char('updated_by', 5)->nullable();
-            $table->char('deleted_by', 5)->nullable();
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->unsignedBigInteger('deleted_by')->nullable();
 
             // Timestamps & Soft Deletes
             $table->timestamps(); // create_at & updated_at
@@ -61,7 +61,7 @@ return new class extends Migration
             $table->string('dokumen_path', 255)->nullable();
             $table->dateTime('created_at')->useCurrent();
 
-            $table->char('id_user', 5);
+            $table->unsignedBigInteger('id_user');
             $table->char('id_sop', 10);
 
             $table->foreign('id_user')->references('id_user')->on('tb_users');
@@ -76,7 +76,7 @@ return new class extends Migration
             $table->boolean('is_read')->default(false);
             $table->dateTime('created_at')->useCurrent();
 
-            $table->char('id_user', 5);
+            $table->unsignedBigInteger('id_user');
             $table->char('id_sop', 10)->nullable();
 
             $table->foreign('id_user')->references('id_user')->on('tb_users')->onDelete('cascade');

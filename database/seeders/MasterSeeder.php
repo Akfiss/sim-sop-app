@@ -33,7 +33,6 @@ class MasterSeeder extends Seeder
         $user = User::firstOrCreate(
             ['email' => 'admin@rs.com'], // Cek berdasarkan email
             [
-                'id_user' => 'U0001',
                 'username' => 'superadmin',
                 'password' => Hash::make('password123'), // Password default
                 'nama_lengkap' => 'Super Administrator',

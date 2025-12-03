@@ -30,12 +30,6 @@ class UserResource extends Resource
                 // Section Informasi Akun
                 Forms\Components\Section::make('Informasi Akun')
                     ->schema([
-                        Forms\Components\TextInput::make('id_user')
-                            ->label('ID User')
-                            ->required()
-                            ->maxLength(5)
-                            ->unique(ignoreRecord: true),
-
                         Forms\Components\TextInput::make('username')
                             ->required()
                             ->unique(ignoreRecord: true)

@@ -20,7 +20,7 @@ return new class extends Migration
 
         // 2. Tabel Users
         Schema::create('tb_users', function (Blueprint $table) {
-            $table->char('id_user', 5)->primary();
+            $table->bigIncrements('id_user'); // Otomatis INT, AI, Primary Key
             $table->string('username', 50)->unique();
             $table->string('email', 100)->unique();
             $table->string('password', 255);
@@ -38,7 +38,8 @@ return new class extends Migration
         // 3. Tabel Unit User (Bridge)
         Schema::create('tb_unit_user', function (Blueprint $table) {
             $table->integer('id_unit_user')->autoIncrement(); // Primary Key AI
-            $table->char('id_user', 5);
+            // $table->char('id_user', length: 5);
+            $table->unsignedBigInteger('id_user');
             $table->char('id_unit', 5);
 
             // Foreign Keys

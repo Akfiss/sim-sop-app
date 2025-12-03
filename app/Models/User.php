@@ -14,8 +14,6 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     protected $table = 'tb_users';
     protected $primaryKey = 'id_user';
-    protected $keyType = 'string';
-    public $incrementing = false;
     public $timestamps = false;
 
     protected $fillable = [
