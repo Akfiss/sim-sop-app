@@ -18,8 +18,10 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\View\PanelsRenderHook; // <--- Import Ini
-use Illuminate\Support\Facades\Blade; // <--- Import Ini
+use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Blade;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
 
 class PengusulPanelProvider extends PanelProvider
 {
@@ -31,6 +33,11 @@ class PengusulPanelProvider extends PanelProvider
             ->login(CustomLogin::class)
             ->colors([
                 'primary' => Color::Green,
+            ])
+            ->plugins([
+                FilamentBackgroundsPlugin::make()
+                    ->imageProvider(CuratedBySwis::make())
+                    ->showAttribution(false),
             ])
             ->discoverResources(in: app_path('Filament/Pengusul/Resources'), for: 'App\\Filament\\Pengusul\\Resources')
             ->discoverPages(in: app_path('Filament/Pengusul/Pages'), for: 'App\\Filament\\Pengusul\\Pages')

@@ -18,6 +18,8 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
 
 class DireksiPanelProvider extends PanelProvider
 {
@@ -29,6 +31,11 @@ class DireksiPanelProvider extends PanelProvider
             ->login(CustomLogin::class)
             ->colors([
                 'primary' => Color::Purple,
+            ])
+            ->plugins([
+                FilamentBackgroundsPlugin::make()
+                    ->imageProvider(CuratedBySwis::make())
+                    ->showAttribution(false),
             ])
             ->discoverResources(in: app_path('Filament/Direksi/Resources'), for: 'App\\Filament\\Direksi\\Resources')
             ->discoverPages(in: app_path('Filament/Direksi/Pages'), for: 'App\\Filament\\Direksi\\Pages')

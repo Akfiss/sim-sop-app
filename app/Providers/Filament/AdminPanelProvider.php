@@ -18,6 +18,10 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Auth\CustomLogin;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
+use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
+
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -31,6 +35,17 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->plugins([
+                FilamentBackgroundsPlugin::make()
+                    ->imageProvider(
+                        CuratedBySwis::make() // Menggunakan gambar pemandangan default yang cantik
+                    )
+                    // ->imageProvider(
+                    //     MyImages::make()
+                    //         ->directory('images/backgrounds') // Pastikan path ini benar ada di folder 'public'
+                    // )
+                    ->showAttribution(false), // Opsional: Sembunyikan teks atribusi fotografer
+            ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -40,7 +55,6 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 Widgets\AccountWidget::class,
                // Widgets\FilamentInfoWidget::class,
-
             ])
             ->middleware([
                 EncryptCookies::class,

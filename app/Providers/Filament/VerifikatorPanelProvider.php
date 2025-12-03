@@ -18,6 +18,8 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
 
 class VerifikatorPanelProvider extends PanelProvider
 {
@@ -29,6 +31,11 @@ class VerifikatorPanelProvider extends PanelProvider
             ->login(CustomLogin::class)
             ->colors([
                 'primary' => Color::Cyan,
+            ])
+            ->plugins([
+                FilamentBackgroundsPlugin::make()
+                    ->imageProvider(CuratedBySwis::make())
+                    ->showAttribution(false),
             ])
             ->discoverResources(in: app_path('Filament/Verifikator/Resources'), for: 'App\\Filament\\Verifikator\\Resources')
             ->discoverPages(in: app_path('Filament/Verifikator/Pages'), for: 'App\\Filament\\Verifikator\\Pages')
