@@ -19,7 +19,7 @@ class DokumenSop extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'id_sop', 'nomor_sk', 'judul_sop', 'kategori_sop',
+        'id_sop', 'nomor_sk', 'judul_sop', 'kategori_sop', 'is_all_units',
         'file_path', 'tgl_pengesahan', 'tgl_berlaku',
         'tgl_review_berikutnya', 'tgl_kadaluarsa', 'status',
         'id_unit_pemilik', 'created_by', 'updated_by', 'deleted_by'

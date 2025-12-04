@@ -33,7 +33,7 @@ class DokumenSopResource extends Resource
                     ->schema([
                         // 1. Judul SOP
                         Forms\Components\TextInput::make('judul_sop')
-                            ->label('Judul SOP')
+                            ->label('Judul Dokumen SOP')
                             ->required()
                             ->maxLength(255)
                             ->columnSpanFull(), // Lebar penuh
@@ -55,15 +55,48 @@ class DokumenSopResource extends Resource
                             ->live() // Agar form reaktif (munculkan unit terkait)
                             ->afterStateUpdated(fn (Forms\Set $set) => $set('unitTerkait', [])),
 
-                        // 4. Unit Terkait (Khusus SOP AP)
+                        // 4. TOGGLE ALL UNITS
+                        // Hanya muncul jika kategori = SOP_AP
+                        Forms\Components\Toggle::make('is_all_units')
+                            ->label('Berlaku untuk SELURUH Unit/Instalasi?')
+                            ->visible(fn (Forms\Get $get) => $get('kategori_sop') === 'SOP_AP')
+                            ->live() // Agar langsung menyembunyikan input unitTerkait di bawahnya
+                            ->columnSpanFull()
+                            ->onColor('success')
+                            ->offColor('gray')
+                            ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                // Jika dicentang, kosongkan pilihan unit manual
+                                if ($state) {
+                                    $set('unitTerkait', []);
+                                }
+                            }),
+
+                        // 5. Unit Terkait (Khusus SOP AP Pilihan Manual)
                         Forms\Components\Select::make('unitTerkait')
-                            ->label('Unit Terkait (Khusus SOP AP)')
+                            ->label('Pilih Unit Terkait')
                             ->relationship('unitTerkait', 'nama_unit')
                             ->multiple()
                             ->preload()
                             ->searchable()
+
+                            // VISIBLE: Tetap muncul selama kategori SOP AP (meskipun All Units aktif)
                             ->visible(fn (Forms\Get $get) => $get('kategori_sop') === 'SOP_AP')
-                            ->required(fn (Forms\Get $get) => $get('kategori_sop') === 'SOP_AP')
+
+                            // DISABLED: Mati jika All Units dicentang
+                            ->disabled(fn (Forms\Get $get) => $get('is_all_units'))
+
+                            // REQUIRED: Hanya wajib jika SOP AP dan All Units MATI
+                            ->required(fn (Forms\Get $get) =>
+                                $get('kategori_sop') === 'SOP_AP' &&
+                                !$get('is_all_units')
+                            )
+
+                            // PLACEHOLDER DINAMIS: Memberi info saat disabled
+                            ->placeholder(fn (Forms\Get $get) =>
+                                $get('is_all_units')
+                                    ? 'Otomatis berlaku untuk semua unit (Disabled)'
+                                    : 'Pilih unit...'
+                            )
                             ->columnSpanFull(),
                     ])->columns(2),
 
@@ -142,7 +175,14 @@ class DokumenSopResource extends Resource
                                     ->label('Unit Terkait')
                                     ->badge()
                                     ->color('info')
-                                    ->placeholder('Internal Unit'),
+                                    ->placeholder('Internal Unit')
+                                    ->formatStateUsing(function ($state, DokumenSop $record) {
+                                        if ($record->is_all_units) {
+                                            return 'SELURUH UNIT / INSTALASI';
+                                        }
+                                        return $state;
+                                    })
+                                    ->color(fn (DokumenSop $record) => $record->is_all_units ? 'success' : 'info'),
                             ]),
                     ]),
 
@@ -201,16 +241,15 @@ class DokumenSopResource extends Resource
     {
         return $table
             ->columns([
-                // 1. Judul SOP + Tanggal Upload (Description)
+                // 1. Judul SOP + Tanggal Upload
                 Tables\Columns\TextColumn::make('judul_sop')
                     ->label('Judul Dokumen')
                     ->searchable()
                     ->sortable()
-                    ->limit(40) // Batasi 40 karakter
-                    ->weight('bold') // Tebalkan judul
-                    ->tooltip(fn (DokumenSop $record) => $record->judul_sop) // Hover untuk lihat judul penuh
+                    ->limit(40)
+                    ->weight('bold')
+                    ->tooltip(fn (DokumenSop $record) => $record->judul_sop)
                     ->description(fn (DokumenSop $record) =>
-                        // Tampilkan Tgl Upload di bawah judul (Italic & Kecil otomatis dari Filament)
                         'Diupload: ' . $record->created_at->translatedFormat('d F Y H:i')
                     ),
 
@@ -223,15 +262,32 @@ class DokumenSopResource extends Resource
                         'warning' => 'SOP_AP',
                     ]),
 
-                // 3. Unit Terkait (HIDDEN BY DEFAULT)
+                // 3. Unit Terkait (LOGIC VISUAL ALL UNITS)
+                // Kita gunakan TextColumn untuk menampilkan unit, tapi jika is_all_units=true,
+                // kita paksa tampilkan teks "SELURUH UNIT"
                 Tables\Columns\TextColumn::make('unitTerkait.nama_unit')
                     ->label('Unit Terkait')
                     ->listWithLineBreaks()
                     ->bulleted()
                     ->limitList(2)
-                    ->toggleable(isToggledHiddenByDefault: true), // <--- Ini kuncinya (Hilang di awal)
+                    ->toggleable(isToggledHiddenByDefault: true) // Tersembunyi by default
+                    // Logic placeholder: Jika relasi kosong tapi is_all_units nyala, tampilkan teks khusus
+                    ->placeholder(fn (DokumenSop $record) =>
+                        $record->is_all_units ? 'SELURUH UNIT / INSTALASI' : '-'
+                    )
+                    // Beri warna hijau jika All Units
+                    ->color(fn (DokumenSop $record) => $record->is_all_units ? 'success' : null)
+                    ->weight(fn (DokumenSop $record) => $record->is_all_units ? 'bold' : null),
 
-                // 4. Status
+                // 4. Penanda All Units (Opsional: Icon Column)
+                Tables\Columns\IconColumn::make('is_all_units')
+                    ->label('All Units?')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-badge')
+                    ->falseIcon('heroicon-o-x-mark')
+                    ->toggleable(isToggledHiddenByDefault: true), // Bisa dimunculkan lewat toggle column
+
+                // 5. Status
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -242,7 +298,7 @@ class DokumenSopResource extends Resource
                         default => 'gray',
                     }),
 
-                // 5. Review Date
+                // 6. Review Date
                 Tables\Columns\TextColumn::make('tgl_review_berikutnya')
                     ->label('Review Date')
                     ->date('d M Y')
@@ -250,7 +306,7 @@ class DokumenSopResource extends Resource
                     ->placeholder('-')
                     ->toggleable(),
 
-                // 6. Expired Date
+                // 7. Expired Date
                 Tables\Columns\TextColumn::make('tgl_kadaluarsa')
                     ->label('Expired Date')
                     ->date('d M Y')
@@ -259,7 +315,7 @@ class DokumenSopResource extends Resource
                     ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->isPast() ? 'danger' : 'success')
                     ->toggleable(),
             ])
-            ->defaultSort('created_at', 'desc') // Urutkan dari yang terbaru
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
@@ -274,17 +330,15 @@ class DokumenSopResource extends Resource
                     ]),
             ])
             ->actions([
-                // GROUP BUTTONS (Edit & Delete digabung biar rapi, atau dipisah icon only)
-
-                // 1. View (Mata)
+                // Action View
                 Tables\Actions\ViewAction::make()
-                    ->label(false) // Hapus teks
+                    ->label(false)
                     ->tooltip('Lihat Detail & Preview')
                     ->modalHeading('Detail Dokumen SOP')
-                    ->modalWidth('4xl') // Lebar Modal
-                    ->icon('heroicon-o-eye'), // Icon Mata
+                    ->modalWidth('4xl')
+                    ->icon('heroicon-o-eye'),
 
-                // 2. Download
+                // Action Download
                 Tables\Actions\Action::make('download')
                     ->label(false)
                     ->tooltip('Unduh PDF')
@@ -293,24 +347,32 @@ class DokumenSopResource extends Resource
                     ->url(fn (DokumenSop $record) => asset('storage/' . $record->file_path))
                     ->openUrlInNewTab(),
 
-                // 3. Edit
+                // Action Edit
                 Tables\Actions\EditAction::make()
                     ->label(false)
-                    ->tooltip('Edit Data'),
+                    ->tooltip('Edit Data')
+                    ->disabled(function (DokumenSop $record) {
+                        if (in_array($record->status, ['DALAM REVIEW', 'REVISI'])) return false;
+                        if ($record->status === 'AKTIF') {
+                            $now = now();
+                            $isReview = $record->tgl_review_berikutnya && $now->diffInDays($record->tgl_review_berikutnya, false) <= 30;
+                            $isExpired = $record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
+                            if ($isReview || $isExpired) return false;
+                        }
+                        return true;
+                    }),
 
-                // 4. Delete
+                // Action Delete
                 Tables\Actions\DeleteAction::make()
                     ->label(false)
-                    ->tooltip('Hapus Data'),
+                    ->tooltip('Hapus Data')
+                    ->visible(fn (DokumenSop $record) => in_array($record->status, ['DALAM REVIEW', 'REVISI'])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            // --- SCROLLABLE SETTINGS ---
-            // Secara default Filament v3 tabelnya sudah responsif (scrollable).
-            // Tapi kita bisa paksa agar kolom tidak terlalu sempit.
             ->paginated([10, 25, 50]);
     }
 
