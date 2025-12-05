@@ -7,10 +7,12 @@ use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Contracts\Auth\CanResetPassword;
+use Illuminate\Auth\Passwords\CanResetPassword as CanResetPasswordTrait;
 
-class User extends Authenticatable implements FilamentUser, HasName
+class User extends Authenticatable implements FilamentUser, HasName, CanResetPassword
 {
-    use Notifiable;
+    use Notifiable, CanResetPasswordTrait;
 
     protected $table = 'tb_users';
     protected $primaryKey = 'id_user';
@@ -27,6 +29,11 @@ class User extends Authenticatable implements FilamentUser, HasName
         'is_active' => 'boolean',
         'password' => 'hashed',
     ];
+
+    public function getEmailForPasswordReset()
+    {
+        return $this->email;
+    }
 
     // --- LOGIKA PINTU MASUK (MULTI PANEL) ---
     public function canAccessPanel(Panel $panel): bool

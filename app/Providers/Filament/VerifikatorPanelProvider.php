@@ -20,6 +20,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
+use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
 
 class VerifikatorPanelProvider extends PanelProvider
 {
@@ -29,6 +30,8 @@ class VerifikatorPanelProvider extends PanelProvider
             ->id('verifikator')
             ->path('verifikator')
             ->login(CustomLogin::class)
+            ->passwordReset(RequestPasswordReset::class)
+            ->emailVerification()
             ->colors([
                 'primary' => Color::Cyan,
             ])

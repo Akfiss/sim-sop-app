@@ -22,6 +22,7 @@ use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
+use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
 
 class PengusulPanelProvider extends PanelProvider
 {
@@ -31,6 +32,8 @@ class PengusulPanelProvider extends PanelProvider
             ->id('pengusul')
             ->path('pengusul')
             ->login(CustomLogin::class)
+            ->passwordReset(RequestPasswordReset::class)
+            ->emailVerification()
             ->colors([
                 'primary' => Color::Green,
             ])

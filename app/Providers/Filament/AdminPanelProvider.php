@@ -21,6 +21,7 @@ use App\Filament\Auth\CustomLogin;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
+use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
 
 
 class AdminPanelProvider extends PanelProvider
@@ -32,6 +33,8 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(CustomLogin::class)
+            ->passwordReset(RequestPasswordReset::class)
+            ->emailVerification()
             ->colors([
                 'primary' => Color::Amber,
             ])

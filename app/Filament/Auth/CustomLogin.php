@@ -7,6 +7,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\View;
 use Filament\Pages\Auth\Login;
+use Illuminate\Validation\ValidationException;
 
 class CustomLogin extends Login
 {
@@ -26,6 +27,14 @@ class CustomLogin extends Login
                 $this->getRememberFormComponent(),
             ])
             ->statePath('data');
+    }
+
+    protected function throwFailureValidationException(): never
+    {
+        throw ValidationException::withMessages([
+            'data.username' => __('auth.failed'),
+            'data.password' => __('auth.password'),
+        ]);
     }
 
     protected function getUsernameFormComponent(): Component
