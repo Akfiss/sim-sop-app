@@ -16,4 +16,16 @@ class EditDokumenSop extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    // --- LOGIC 4: OTOMATIS GANTI STATUS SAAT EDIT ---
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // Setiap kali Pengusul menekan tombol Simpan/Save Changes:
+        // Ubah status menjadi 'DALAM REVIEW' agar Verifikator memeriksa ulang.
+        // Baik itu dari status 'REVISI' maupun 'AKTIF' (yang sedang direview tahunan).
+
+        $data['status'] = 'DALAM REVIEW';
+
+        return $data;
+    }
 }

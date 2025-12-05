@@ -66,13 +66,20 @@ class DokumenSopResource extends Resource
                     })
                     // 3. Penanda Review Tahunan (Description)
                     ->description(function (DokumenSop $record) {
-                        // Cek jika AKTIF dan sisa hari <= 30
-                        if ($record->status === 'AKTIF' &&
-                            $record->tgl_kadaluarsa &&
-                            Carbon::parse($record->tgl_kadaluarsa)->lte(now()->addDays(30))
-                        ) {
+                        if ($record->status !== 'AKTIF') return null;
+
+                        $now = now();
+
+                        // Cek Mau Kadaluarsa (Prioritas Utama)
+                        if ($record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30) {
+                            return '🚨 Segera Kadaluarsa';
+                        }
+
+                        // Cek Review Tahunan
+                        if ($record->tgl_review_berikutnya && $now->diffInDays($record->tgl_review_berikutnya, false) <= 30) {
                             return '⚠️ Perlu Review Tahunan';
                         }
+
                         return null;
                     }),
 

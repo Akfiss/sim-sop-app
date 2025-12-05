@@ -16,8 +16,31 @@ class CheckSopExpiration extends Command
     {
         $today = Carbon::now();
 
+
         // ---------------------------------------------------------
-        // 1. LOGIC KADALUARSA (HARD EXPIRE - 3 TAHUN)
+        // 1. LOGIC AUTO-SKIP REVIEW (Jika user lupa review sampai tanggalnya lewat)
+        // ---------------------------------------------------------
+        $missedReviews = DokumenSop::where('status', 'AKTIF')
+            ->whereDate('tgl_review_berikutnya', '<', $today) // Tanggal review sudah lewat
+            ->whereDate('tgl_kadaluarsa', '>', $today) // Tapi belum expired total
+            ->get();
+
+        foreach ($missedReviews as $sop) {
+            // Majukan jadwal ke tahun depan otomatis
+            $nextReview = Carbon::parse($sop->tgl_review_berikutnya)->addYear();
+
+            // Cek apakah tahun depan sudah expired?
+            if ($nextReview->gte(Carbon::parse($sop->tgl_kadaluarsa))) {
+                $sop->update(['tgl_review_berikutnya' => null]); // Stop review, fokus expired
+            } else {
+                $sop->update(['tgl_review_berikutnya' => $nextReview]);
+            }
+
+            $this->info("Auto-bump review date for SOP {$sop->id_sop}");
+        }
+
+        // ---------------------------------------------------------
+        // 2. LOGIC KADALUARSA (HARD EXPIRE - 3 TAHUN)
         // ---------------------------------------------------------
         $expiredSops = DokumenSop::where('status', 'AKTIF')
             ->whereDate('tgl_kadaluarsa', '<', $today)
@@ -37,7 +60,7 @@ class CheckSopExpiration extends Command
         }
 
         // ---------------------------------------------------------
-        // 2. LOGIC REVIEW TAHUNAN & UPDATE TANGGAL
+        // 3. LOGIC REVIEW TAHUNAN & UPDATE TANGGAL
         // ---------------------------------------------------------
 
         // Ambil SOP Aktif yang punya jadwal review
@@ -85,7 +108,7 @@ class CheckSopExpiration extends Command
         }
 
         // ---------------------------------------------------------
-        // 3. LOGIC ALERT MENDEKATI KADALUARSA (H-30 EXPIRED)
+        // 4. LOGIC ALERT MENDEKATI KADALUARSA (H-30 EXPIRED)
         // ---------------------------------------------------------
         // (Ini alert khusus mau mati total 3 tahun, terpisah dari review tahunan)
         $expiringSops = DokumenSop::where('status', 'AKTIF')

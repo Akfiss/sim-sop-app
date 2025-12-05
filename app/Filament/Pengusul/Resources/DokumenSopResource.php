@@ -4,6 +4,10 @@ namespace App\Filament\Pengusul\Resources;
 
 use App\Filament\Pengusul\Resources\DokumenSopResource\Pages;
 use App\Models\DokumenSop;
+use App\Models\Notifikasi; // Pastikan Model Notifikasi ada
+use App\Models\RiwayatSop; // Pastikan Model Riwayat ada (jika mau catat log)
+use Carbon\Carbon;
+use Filament\Notifications\Notification;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -78,7 +82,7 @@ class DokumenSopResource extends Resource
                             ->multiple()
                             ->preload()
                             ->searchable()
-
+                            ->key(fn (Forms\Get $get) => 'unit_input_' . ($get('is_all_units') ? 'locked' : 'active'))
                             // VISIBLE: Tetap muncul selama kategori SOP AP (meskipun All Units aktif)
                             ->visible(fn (Forms\Get $get) => $get('kategori_sop') === 'SOP_AP')
 
@@ -119,7 +123,7 @@ class DokumenSopResource extends Resource
                             ->disk('public') // Simpan di storage public
                             ->directory('dokumen-sop')
                             ->acceptedFileTypes(['application/pdf'])
-                            ->maxSize(10240) // Maksimal 10MB
+                            ->maxSize(1024) // Maksimal 1MB
                             ->required()
                             ->columnSpanFull(),
                     ]),
@@ -296,6 +300,24 @@ class DokumenSopResource extends Resource
                         'AKTIF' => 'success',
                         'KADALUARSA' => 'gray',
                         default => 'gray',
+                    })
+                    // PENANDA DI BAWAH STATUS (Description)
+                    ->description(function (DokumenSop $record) {
+                        if ($record->status !== 'AKTIF') return null;
+                        $now = now();
+
+                        // Cek Segera Kadaluarsa (H-30)
+                        if ($record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30) {
+                            return '🚨 Segera Kadaluarsa';
+                        }
+                        return null;
+                    })
+                    // TOOLTIP SAAT HOVER
+                    ->tooltip(function (DokumenSop $record) {
+                        if ($record->status === 'AKTIF' && $record->tgl_kadaluarsa && now()->diffInDays($record->tgl_kadaluarsa, false) <= 30) {
+                            return 'Masa berlaku 3 tahun hampir habis. Wajib perbarui dokumen lewat tombol Edit!';
+                        }
+                        return null;
                     }),
 
                 // 6. Review Date
@@ -347,6 +369,65 @@ class DokumenSopResource extends Resource
                     ->url(fn (DokumenSop $record) => asset('storage/' . $record->file_path))
                     ->openUrlInNewTab(),
 
+                // --- 3. ACTION KHUSUS: REVIEW TAHUNAN (WARNING ICON) ---
+                Tables\Actions\Action::make('review_tahunan')
+                    ->label('Perlu Review')
+                    ->icon('heroicon-s-exclamation-triangle') // Icon Warning Solid
+                    ->color('warning')
+                    ->button() // Tampil sebagai button agar mencolok
+                    ->tooltip('SOP ini mendekati jadwal review tahunan. Klik untuk proses.')
+
+                    ->visible(function (DokumenSop $record) {
+                        if ($record->status !== 'AKTIF' || !$record->tgl_review_berikutnya) return false;
+
+                        $now = now();
+                        // Muncul jika H-30 Review DAN H-30 Expired BELUM tercapai (biar gak bentrok)
+                        $isReviewTime = $now->diffInDays($record->tgl_review_berikutnya, false) <= 30;
+                        $isNearExpired = $record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
+
+                        return $isReviewTime && !$isNearExpired;
+                    })
+                    ->modalHeading('Konfirmasi Review Tahunan')
+                    ->modalDescription('Apakah ada perubahan pada isi dokumen SOP ini?')
+                    ->modalSubmitActionLabel('Tidak Ada Perubahan (Perpanjang)')
+                    ->modalCancelActionLabel('Ada Perubahan (Revisi)')
+
+                    // LOGIKA TOMBOL "TIDAK ADA PERUBAHAN" (Submit Modal)
+                    ->action(function (DokumenSop $record) {
+                        // Perpanjang 1 tahun lagi jadwal reviewnya
+                        $record->update([
+                            'tgl_review_berikutnya' => Carbon::parse($record->tgl_review_berikutnya)->addYear(),
+                            'updated_at' => now(), // Menandakan baru diupdate
+                        ]);
+
+                        Notification::make()->title('Review Selesai (Tidak Ada Perubahan)')->success()->send();
+                    })
+                    // LOGIKA TOMBOL "ADA PERUBAHAN" (Cancel Modal -> Dialihkan ke Edit)
+                    ->extraModalFooterActions([
+                        Tables\Actions\Action::make('edit_changes')
+                            ->label('Ada Perubahan (Edit Dokumen)')
+                            ->color('primary')
+                            ->url(fn (DokumenSop $record) => DokumenSopResource::getUrl('edit', ['record' => $record])),
+                    ]),
+
+                // --- 2. ACTION: AKAN KADALUARSA (MERAH) ---
+                // Logic: H-30 dari Expired Date. WAJIB UPLOAD ULANG.
+                // Tables\Actions\Action::make('perpanjang_kadaluarsa')
+                //     ->label('Akan Kadaluarsa')
+                //     ->icon('heroicon-s-bell-alert') // Lonceng Merah
+                //     ->color('danger')
+                //     ->button()
+                //     ->tooltip('Masa berlaku 3 tahun hampir habis. Silahkan perbarui dokumen!')
+                //     ->visible(function (DokumenSop $record) {
+                //         if ($record->status !== 'AKTIF' || !$record->tgl_kadaluarsa) return false;
+
+                //         $now = now();
+                //         // Muncul hanya saat H-30 Expired
+                //         return $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
+                //     })
+                //     // Langsung arahkan ke Edit karena wajib upload ulang
+                //     ->url(fn (DokumenSop $record) => DokumenSopResource::getUrl('edit', ['record' => $record])),
+
                 // Action Edit
                 Tables\Actions\EditAction::make()
                     ->label(false)
@@ -356,7 +437,10 @@ class DokumenSopResource extends Resource
                         if ($record->status === 'AKTIF') {
                             $now = now();
                             $isReview = $record->tgl_review_berikutnya && $now->diffInDays($record->tgl_review_berikutnya, false) <= 30;
+
+                            // JIKA KADALUARSA DEKAT -> FITUR EDIT DIBUKA
                             $isExpired = $record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
+
                             if ($isReview || $isExpired) return false;
                         }
                         return true;
