@@ -41,6 +41,8 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->brandLogo(asset('images/logo-rs.png'))
+            ->brandName('SIMSOP RSUP Prof. dr. I.G.N.G. Ngoerah')
+            ->favicon(asset('images/faviconlogo-rs.svg'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(

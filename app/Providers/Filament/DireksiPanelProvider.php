@@ -36,6 +36,8 @@ class DireksiPanelProvider extends PanelProvider
                 'primary' => Color::Purple,
             ])
             ->brandLogo(asset('images/logo-rs.png'))
+            ->brandName('SIMSOP RSUP Prof. dr. I.G.N.G. Ngoerah')
+            ->favicon(asset('images/faviconlogo-rs.svg'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(CuratedBySwis::make())
