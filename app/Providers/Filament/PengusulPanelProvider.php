@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Auth\CustomLogin;
+use App\Filament\Pengusul\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -48,7 +49,7 @@ class PengusulPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Pengusul/Resources'), for: 'App\\Filament\\Pengusul\\Resources')
             ->discoverPages(in: app_path('Filament/Pengusul/Pages'), for: 'App\\Filament\\Pengusul\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Pengusul/Widgets'), for: 'App\\Filament\\Pengusul\\Widgets')
             ->widgets([

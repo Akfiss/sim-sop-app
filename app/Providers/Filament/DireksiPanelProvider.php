@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Auth\CustomLogin;
+use App\Filament\Direksi\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -46,7 +47,7 @@ class DireksiPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Direksi/Resources'), for: 'App\\Filament\\Direksi\\Resources')
             ->discoverPages(in: app_path('Filament/Direksi/Pages'), for: 'App\\Filament\\Direksi\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Direksi/Widgets'), for: 'App\\Filament\\Direksi\\Widgets')
             ->widgets([
