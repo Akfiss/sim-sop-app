@@ -8,6 +8,8 @@ use Filament\Forms\Components\Component;
 use Filament\Forms\Components\View;
 use Filament\Pages\Auth\Login;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\HtmlString;
 
 class CustomLogin extends Login
 {
@@ -44,6 +46,17 @@ class CustomLogin extends Login
             ->required()
             ->autocomplete()
             ->autofocus();
+    }
+
+    protected function getPasswordFormComponent(): Component
+    {
+        return TextInput::make('password')
+            ->label('Password')
+            ->password()
+            ->required()
+            ->revealable() // Fitur intip password (mata)
+            ->autocomplete('current-password')
+            ->hint(filament()->hasPasswordReset() ? new HtmlString(Blade::render('<x-filament::link :href="filament()->getRequestPasswordResetUrl()">Lupa password?</x-filament::link>')) : null);
     }
 
     protected function getCredentialsFromFormData(array $data): array

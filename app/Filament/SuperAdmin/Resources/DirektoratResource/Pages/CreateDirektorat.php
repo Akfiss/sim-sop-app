@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\DirektoratResource\Pages;
+namespace App\Filament\SuperAdmin\Resources\DirektoratResource\Pages;
 
-use App\Filament\Resources\DirektoratResource;
+use App\Filament\SuperAdmin\Resources\DirektoratResource;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 

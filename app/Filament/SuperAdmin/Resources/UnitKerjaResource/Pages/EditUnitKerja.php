@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\UnitKerjaResource\Pages;
+namespace App\Filament\SuperAdmin\Resources\UnitKerjaResource\Pages;
 
-use App\Filament\Resources\UnitKerjaResource;
+use App\Filament\SuperAdmin\Resources\UnitKerjaResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 

@@ -17,11 +17,13 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\SuperAdmin\Pages\Dashboard;
 use App\Filament\Auth\CustomLogin;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
 use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
+
 
 
 class AdminPanelProvider extends PanelProvider
@@ -49,12 +51,12 @@ class AdminPanelProvider extends PanelProvider
                     // )
                     ->showAttribution(false), // Opsional: Sembunyikan teks atribusi fotografer
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverResources(in: app_path('Filament/SuperAdmin/Resources'), for: 'App\\Filament\\SuperAdmin\\Resources')
+            ->discoverPages(in: app_path('Filament/SuperAdmin/Pages'), for: 'App\\Filament\\SuperAdmin\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->discoverWidgets(in: app_path('Filament/SuperAdmin/Widgets'), for: 'App\\Filament\\SuperAdmin\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
                // Widgets\FilamentInfoWidget::class,

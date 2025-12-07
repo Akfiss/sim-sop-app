@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\SuperAdmin\Resources;
 
-use App\Filament\Resources\DirektoratResource\Pages;
+use App\Filament\SuperAdmin\Resources\DirektoratResource\Pages;
 use App\Models\Direktorat;
 use Filament\Forms;
 use Filament\Forms\Form;

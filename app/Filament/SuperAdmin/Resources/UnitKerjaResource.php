@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\SuperAdmin\Resources;
 
-use App\Filament\Resources\UnitKerjaResource\Pages;
+use App\Filament\SuperAdmin\Resources\UnitKerjaResource\Pages;
 use App\Models\UnitKerja;
 use Filament\Forms;
 use Filament\Forms\Form;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Widgets;
+namespace App\Filament\SuperAdmin\Widgets;
 
 use App\Models\Direktorat;
 use App\Models\UnitKerja;
