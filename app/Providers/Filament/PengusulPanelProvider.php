@@ -37,6 +37,7 @@ class PengusulPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Green,
             ])
+            ->brandLogo(asset('images/logo-rs.png'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(CuratedBySwis::make())

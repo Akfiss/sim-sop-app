@@ -35,6 +35,7 @@ class DireksiPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Purple,
             ])
+            ->brandLogo(asset('images/logo-rs.png'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(CuratedBySwis::make())

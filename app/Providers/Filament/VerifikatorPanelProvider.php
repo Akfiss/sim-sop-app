@@ -35,6 +35,7 @@ class VerifikatorPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Cyan,
             ])
+            ->brandLogo(asset('images/logo-rs.png'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(CuratedBySwis::make())

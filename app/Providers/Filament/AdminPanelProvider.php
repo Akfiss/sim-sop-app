@@ -40,6 +40,7 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->brandLogo(asset('images/logo-rs.png'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
                     ->imageProvider(
