@@ -7,6 +7,7 @@ use App\Models\UnitKerja;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -75,8 +76,19 @@ class UnitKerjaResource extends Resource
                     ->label('Filter Direktorat'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label(false)   // Hapus Teks
+                    ->tooltip('Edit Data'), // Ganti dengan Tooltip saat hover
+
+                Tables\Actions\DeleteAction::make()
+                    ->label(false)   // Hapus Teks
+                    ->tooltip('Hapus Data')
+                    ->successNotification(
+                        Notification::make()
+                        ->success()
+                        ->title('Berhasil dihapus.')
+                        ->body('Data unit kerja telah dihapus dari sistem.')
+                    )
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

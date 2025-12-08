@@ -6,6 +6,7 @@ use App\Filament\SuperAdmin\Resources\DirektoratResource\Pages;
 use App\Models\Direktorat;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -56,9 +57,21 @@ class DirektoratResource extends Resource
             ->filters([
                 //
             ])
+            // --- BAGIAN ACTION ICON ONLY ---
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label(false)   // Hapus Teks
+                    ->tooltip('Edit Data'), // Ganti dengan Tooltip saat hover
+
+                Tables\Actions\DeleteAction::make()
+                    ->label(false)   // Hapus Teks
+                    ->tooltip('Hapus Data')
+                    ->successNotification(
+                        Notification::make()
+                        ->success()
+                        ->title('Berhasil dihapus.')
+                        ->body('Data direktorat telah dihapus dari sistem.')
+                    )
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

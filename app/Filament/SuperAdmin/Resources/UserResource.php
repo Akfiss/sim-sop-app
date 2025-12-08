@@ -8,6 +8,7 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Notifications\Notification;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
 
@@ -97,19 +98,33 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
+                // 1. ID User
                 Tables\Columns\TextColumn::make('id_user')
                     ->label('ID')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold'),
 
+                // 2. Nama Lengkap
                 Tables\Columns\TextColumn::make('nama_lengkap')
+                    ->label('Nama Lengkap')
                     ->searchable(),
 
+                // 3. Username
                 Tables\Columns\TextColumn::make('username')
-                    ->searchable(),
+                    ->searchable()
+                    ->icon('heroicon-m-user')
+                    ->color('gray'),
 
+                // 4. Email
+                Tables\Columns\TextColumn::make('email')
+                    ->icon('heroicon-m-envelope')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true), // Opsional: disembunyikan default agar tidak penuh
+
+                // 5. Role (Badge Warna)
                 Tables\Columns\TextColumn::make('role')
-                    ->badge() // Tampil seperti badge warna
+                    ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'SUPER ADMIN' => 'danger',
                         'DIREKSI' => 'warning',
@@ -118,9 +133,31 @@ class UserResource extends Resource
                         default => 'gray',
                     }),
 
+                // 6. Direktorat (Relasi)
+                Tables\Columns\TextColumn::make('direktorat.nama_direktorat')
+                    ->label('Direktorat')
+                    ->searchable()
+                    ->wrap() // Text wrapping jika kepanjangan
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // 7. Unit Kerja (Relasi Many-to-Many)
+                Tables\Columns\TextColumn::make('units.nama_unit')
+                    ->label('Unit Kerja')
+                    ->badge()
+                    ->separator(',') // Jika user punya banyak unit, dipisah koma
+                    ->limitList(2)   // Tampilkan max 2, sisanya "+1 more"
+                    ->color('gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // 8. Status Aktif
                 Tables\Columns\IconColumn::make('is_active')
-                    ->label('Aktif')
-                    ->boolean(),
+                    ->label('Status')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->alignCenter(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('role')
@@ -130,13 +167,24 @@ class UserResource extends Resource
                         'DIREKSI' => 'Direksi',
                         'SUPER ADMIN' => 'Super Admin',
                     ]),
-
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Status Aktif'),
             ])
+            // --- BAGIAN ACTION ICON ONLY ---
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label(false)   // Hapus Teks
+                    ->tooltip('Edit Data'), // Ganti dengan Tooltip saat hover
+
+                Tables\Actions\DeleteAction::make()
+                    ->label(false)   // Hapus Teks
+                    ->tooltip('Hapus Data')
+                    ->successNotification(
+                        Notification::make()
+                        ->success()
+                        ->title('Berhasil dihapus.')
+                        ->body('Data akun telah dihapus dari sistem.')
+                    )
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

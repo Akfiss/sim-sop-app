@@ -4,16 +4,47 @@ namespace App\Filament\SuperAdmin\Resources\UserResource\Pages;
 
 use App\Filament\SuperAdmin\Resources\UserResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
 
-class EditUser extends EditRecord
+class EditUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
 
-    protected function getHeaderActions(): array
+    // 1. REDIRECT KE LIST SETELAH SIMPAN
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+     // 2. CUSTOM NOTIFIKASI SUKSES (INI SOLUSINYA)
+    protected function getCreatedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->success()
+            ->title('Akun Berhasil Ditambahkan') // Judul custom
+            ->body('Data akun baru telah tersimpan di sistem.') // Pesan custom
+            ->duration(5000); // Opsional: Durasi tampil (ms)
+    }
+
+    // 2. TERJEMAHKAN TOMBOL KE BAHASA INDONESIA
+    protected function getFormActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\Action::make('save')
+                ->label('Simpan')
+                ->submit('create')
+                ->keyBindings(['mod+s']),
+
+            Actions\Action::make('createAnother')
+                ->label('Simpan & Buat Baru')
+                ->action('createAnother')
+                ->color('gray'),
+
+            Actions\Action::make('cancel')
+                ->label('Batal')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('gray'),
         ];
     }
 }
