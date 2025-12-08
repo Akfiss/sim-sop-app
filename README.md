@@ -72,7 +72,7 @@ Ikuti langkah ini untuk menjalankan projek di komputer lain:
 
 1.  **Clone Repository**
     ```bash
-    git clone [https://github.com/username-anda/sim-sop-app.git](https://github.com/username-anda/sim-sop-app.git)
+    git clone https://github.com/akfiss/sim-sop-app.git
     cd sim-sop-app
     ```
 
@@ -89,7 +89,7 @@ Ikuti langkah ini untuk menjalankan projek di komputer lain:
         DB_CONNECTION=mysql
         DB_HOST=127.0.0.1
         DB_PORT=3306
-        DB_DATABASE=sim_sop_db
+        DB_DATABASE=db_simsop
         DB_USERNAME=root
         DB_PASSWORD=
         ```
