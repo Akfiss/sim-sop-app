@@ -55,6 +55,7 @@ class DokumenSopResource extends Resource
                                 'SOP' => 'SOP (Internal Unit)',
                                 'SOP_AP' => 'SOP AP (Administrasi Lintas Unit)',
                             ])
+                            ->placeholder('Pilih Kategori...')
                             ->required()
                             ->live() // Agar form reaktif (munculkan unit terkait)
                             ->afterStateUpdated(fn (Forms\Set $set) => $set('unitTerkait', [])),
@@ -119,8 +120,9 @@ class DokumenSopResource extends Resource
                     ->schema([
                         // 7. File Upload
                         Forms\Components\FileUpload::make('file_path')
-                            ->label('Upload File PDF')
-                            ->disk('public') // Simpan di storage public
+                            ->label('Unggah Dokumen PDF')
+                            ->placeholder('Klik atau seret file ke sini untuk mengunggah')
+                            ->disk('public') // Simpan di storage public    
                             ->directory('dokumen-sop')
                             ->acceptedFileTypes(['application/pdf'])
                             ->maxSize(1024) // Maksimal 1MB
@@ -334,7 +336,7 @@ class DokumenSopResource extends Resource
                     ->date('d M Y')
                     ->sortable()
                     ->placeholder('-')
-                    ->color(fn ($state) => $state && \Carbon\Carbon::parse($state)->isPast() ? 'danger' : 'success')
+                    ->color(fn ($state) => $state && Carbon::parse($state)->isPast() ? 'danger' : 'success')
                     ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
@@ -409,24 +411,6 @@ class DokumenSopResource extends Resource
                             ->color('primary')
                             ->url(fn (DokumenSop $record) => DokumenSopResource::getUrl('edit', ['record' => $record])),
                     ]),
-
-                // --- 2. ACTION: AKAN KADALUARSA (MERAH) ---
-                // Logic: H-30 dari Expired Date. WAJIB UPLOAD ULANG.
-                // Tables\Actions\Action::make('perpanjang_kadaluarsa')
-                //     ->label('Akan Kadaluarsa')
-                //     ->icon('heroicon-s-bell-alert') // Lonceng Merah
-                //     ->color('danger')
-                //     ->button()
-                //     ->tooltip('Masa berlaku 3 tahun hampir habis. Silahkan perbarui dokumen!')
-                //     ->visible(function (DokumenSop $record) {
-                //         if ($record->status !== 'AKTIF' || !$record->tgl_kadaluarsa) return false;
-
-                //         $now = now();
-                //         // Muncul hanya saat H-30 Expired
-                //         return $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
-                //     })
-                //     // Langsung arahkan ke Edit karena wajib upload ulang
-                //     ->url(fn (DokumenSop $record) => DokumenSopResource::getUrl('edit', ['record' => $record])),
 
                 // Action Edit
                 Tables\Actions\EditAction::make()

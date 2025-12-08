@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\LandingPageController; // <--- Pastikan di-import
 
-Route::get('/', function () {
-    return redirect('/admin');
-});
+// Arahkan ke Controller agar logic $stats dijalankan
+Route::get('/', [LandingPageController::class, 'index'])->name('landing-page');

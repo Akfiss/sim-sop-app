@@ -20,6 +20,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
 use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
 
@@ -37,12 +38,19 @@ class DireksiPanelProvider extends PanelProvider
                 'primary' => Color::Purple,
             ])
             ->brandLogo(asset('images/logo-rs.png'))
+            ->brandLogoHeight('2.5rem')
             ->brandName('SIMSOP RSUP Prof. dr. I.G.N.G. Ngoerah')
             ->favicon(asset('images/faviconlogo-rs.svg'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
-                    ->imageProvider(CuratedBySwis::make())
-                    ->showAttribution(false),
+                    // ->imageProvider(CuratedBySwis::make())
+                    // ->showAttribution(false),
+
+                    ->imageProvider(
+                        MyImages::make()
+                            ->directory('images/swisnl/filament-backgrounds/curated-by-swis') // Pastikan path ini benar ada di folder 'public'
+                    )
+                    ->showAttribution(false), // Opsional: Sembunyikan teks atribusi fotografer
             ])
             ->discoverResources(in: app_path('Filament/Direksi/Resources'), for: 'App\\Filament\\Direksi\\Resources')
             ->discoverPages(in: app_path('Filament/Direksi/Pages'), for: 'App\\Filament\\Direksi\\Pages')

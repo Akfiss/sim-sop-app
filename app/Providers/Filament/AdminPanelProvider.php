@@ -41,17 +41,18 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->brandLogo(asset('images/logo-rs.png'))
+            ->brandLogoHeight('2.5rem')
             ->brandName('SIMSOP RSUP Prof. dr. I.G.N.G. Ngoerah')
             ->favicon(asset('images/faviconlogo-rs.svg'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
-                    ->imageProvider(
-                        CuratedBySwis::make() // Menggunakan gambar pemandangan default yang cantik
-                    )
                     // ->imageProvider(
-                    //     MyImages::make()
-                    //         ->directory('images/backgrounds') // Pastikan path ini benar ada di folder 'public'
+                    //     CuratedBySwis::make() // Menggunakan gambar pemandangan default yang cantik
                     // )
+                    ->imageProvider(
+                        MyImages::make()
+                            ->directory('images/swisnl/filament-backgrounds/curated-by-swis') // Pastikan path ini benar ada di folder 'public'
+                    )
                     ->showAttribution(false), // Opsional: Sembunyikan teks atribusi fotografer
             ])
             ->discoverResources(in: app_path('Filament/SuperAdmin/Resources'), for: 'App\\Filament\\SuperAdmin\\Resources')
