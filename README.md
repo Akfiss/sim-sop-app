@@ -84,6 +84,9 @@ Ikuti langkah ini untuk menjalankan projek di komputer lain:
 
 3.  **Setup Environment**
     * Duplikat file `.env.example` menjadi `.env`.
+      ```bash
+      cp .env.example .env
+      ```
     * Atur konfigurasi database di file `.env`:
         ```env
         DB_CONNECTION=mysql
