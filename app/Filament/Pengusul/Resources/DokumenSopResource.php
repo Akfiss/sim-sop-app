@@ -122,7 +122,7 @@ class DokumenSopResource extends Resource
                         Forms\Components\FileUpload::make('file_path')
                             ->label('Unggah Dokumen PDF')
                             ->placeholder('Klik atau seret file ke sini untuk mengunggah')
-                            ->disk('public') // Simpan di storage public    
+                            ->disk('public') // Simpan di storage public
                             ->directory('dokumen-sop')
                             ->acceptedFileTypes(['application/pdf'])
                             ->maxSize(1024) // Maksimal 1MB
@@ -223,21 +223,28 @@ class DokumenSopResource extends Resource
                     ]),
 
                 // PREVIEW PDF (DITENGAHKAN)
-                Infolists\Components\Section::make('Preview Dokumen')
-                    ->schema([
-                        Infolists\Components\TextEntry::make('file_path')
-                            ->label('') // Label kosong agar bersih
-                            ->formatStateUsing(fn ($state) => new HtmlString(
-                                // Wrapper DIV agar iframe ke tengah
-                                '<div style="display: flex; justify-content: center; align-items: center; width: 100%; background-color: #f9fafb; padding: 10px; border-radius: 8px;">
-                                    <iframe
-                                        src="'.asset('storage/'.$state).'"
-                                        style="width: 100%; height: 500px; border: none; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
-                                    ></iframe>
-                                </div>'
-                            ))
-                            ->columnSpanFull(),
-                    ])
+                // Infolists\Components\Section::make('Preview Dokumen')
+                //     ->schema([
+                //         Infolists\Components\TextEntry::make('file_path')
+                //             ->label('') // Label kosong agar bersih
+                //             ->formatStateUsing(fn ($state) => new HtmlString(
+                //                 // Wrapper DIV agar iframe ke tengah
+                //                 '<div style="display: flex; justify-content: center; align-items: center; width: 100%; background-color: #f9fafb; padding: 10px; border-radius: 8px;">
+                //                     <iframe
+                //                         src="'.asset('storage/'.$state).'"
+                //                         style="width: 100%; height: 500px; border: none; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"
+                //                     ></iframe>
+                //                 </div>'
+                //             ))
+                //             ->columnSpanFull(),
+                //     ])
+                    Infolists\Components\Section::make('Preview Dokumen')
+                        ->schema([
+                            Infolists\Components\TextEntry::make('file_path')
+                                ->label('') // Label kosong agar bersih
+                                ->view('filament.infolists.pdf-viewer')
+                                ->columnSpanFull(),
+    ])
                     ->collapsible(), // Bisa dilipat jika ingin ringkas
             ]);
     }
@@ -297,6 +304,7 @@ class DokumenSopResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
+                        'DRAFT' => 'gray',
                         'DALAM REVIEW' => 'warning',
                         'REVISI' => 'danger',
                         'AKTIF' => 'success',
