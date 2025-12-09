@@ -172,19 +172,25 @@ class UserResource extends Resource
             ])
             // --- BAGIAN ACTION ICON ONLY ---
             ->actions([
-                Tables\Actions\EditAction::make()
-                    ->label(false)   // Hapus Teks
-                    ->tooltip('Edit Data'), // Ganti dengan Tooltip saat hover
+                Tables\Actions\ActionGroup::make([
 
-                Tables\Actions\DeleteAction::make()
-                    ->label(false)   // Hapus Teks
-                    ->tooltip('Hapus Data')
-                    ->successNotification(
-                        Notification::make()
+                    Tables\Actions\EditAction::make()
+                        ->label('Edit')
+                        ->color('warning'),
+
+                    Tables\Actions\DeleteAction::make()
+                        ->label('Hapus')   // Hapus Teks
+                        ->successNotification(
+                            Notification::make()
                         ->success()
                         ->title('Berhasil dihapus.')
                         ->body('Data akun telah dihapus dari sistem.')
-                    )
+                        )
+                    ])
+                    ->icon('heroicon-m-ellipsis-vertical') // Ikon titik tiga
+                    ->color('gray') // Warna ikon utama
+                    ->tooltip('Menu Aksi') // Tooltip saat hover ikon grup
+                    ->extraAttributes(['class' => 'w-auto min-w-[150px]']), // Lebar minimal agar tidak terlalu kecil
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

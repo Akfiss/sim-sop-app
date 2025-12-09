@@ -15,7 +15,9 @@ class ListDokumenSops extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Ajukan SOP Baru')
+                ->icon('heroicon-o-plus'),
         ];
     }
 

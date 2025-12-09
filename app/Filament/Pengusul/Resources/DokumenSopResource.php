@@ -18,14 +18,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Filament\Support\Enums\MaxWidth;
+
 
 class DokumenSopResource extends Resource
 {
     protected static ?string $model = DokumenSop::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationLabel = 'Daftar SOP';
-    protected static ?string $pluralModelLabel = 'Daftar SOP';
+    protected static ?string $navigationLabel = 'Pengajuan SOP'; 
+    protected static ?string $pluralModelLabel = 'Pengajuan SOP';
+    protected static ?string $navigationGroup = 'Daftar Lengkap SOP';
+    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationIcon = 'heroicon-o-document-plus';
 
     public static function form(Form $form): Form
     {
@@ -45,6 +49,7 @@ class DokumenSopResource extends Resource
                         // 2. Nomor SK (Boleh kosong jika belum ada SK / masih draft)
                         Forms\Components\TextInput::make('nomor_sk')
                             ->label('Nomor SK')
+                            ->required()
                             ->placeholder('Contoh: 001/SK/DIR/2025')
                             ->maxLength(50),
 
@@ -111,6 +116,7 @@ class DokumenSopResource extends Resource
                         // Tanggal Pengesahan
                         Forms\Components\DatePicker::make('tgl_pengesahan')
                             ->label('Tanggal Pengesahan (TTD)')
+                            ->required()
                             ->native(false) // Pakai widget datepicker JS yang bagus
                             ->displayFormat('d/m/Y'),
                     ])->columns(1),
@@ -347,87 +353,94 @@ class DokumenSopResource extends Resource
                     ]),
             ])
             ->actions([
-                // Action View
-                Tables\Actions\ViewAction::make()
-                    ->label(false)
-                    ->tooltip('Lihat Detail & Preview')
-                    ->modalHeading('Detail Dokumen SOP')
-                    ->modalWidth('4xl')
-                    ->icon('heroicon-o-eye'),
+                // KITA BUNGKUS SEMUA ACTION DALAM SATU GRUP
+                Tables\Actions\ActionGroup::make([
 
-                // Action Download
-                Tables\Actions\Action::make('download')
-                    ->label(false)
-                    ->tooltip('Unduh PDF')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('gray')
-                    ->url(fn (DokumenSop $record) => asset('storage/' . $record->file_path))
-                    ->openUrlInNewTab(),
+                    // 1. View Detail
+                    Tables\Actions\ViewAction::make()
+                        ->label('Detail')
+                        ->tooltip('Lihat Detail & Preview')
+                        ->modalHeading('Detail Dokumen SOP')
+                        ->modalWidth('4xl')
+                        ->icon('heroicon-o-eye')
+                        ->color('info'), // Warna biru muda
 
-                // --- 3. ACTION KHUSUS: REVIEW TAHUNAN (WARNING ICON) ---
-                Tables\Actions\Action::make('review_tahunan')
-                    ->label('Perlu Review')
-                    ->icon('heroicon-s-exclamation-triangle') // Icon Warning Solid
-                    ->color('warning')
-                    ->button() // Tampil sebagai button agar mencolok
-                    ->tooltip('SOP ini mendekati jadwal review tahunan. Klik untuk proses.')
+                    // 2. Download PDF
+                    Tables\Actions\Action::make('download')
+                        ->label('Unduh')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success') // Warna hijau
+                        ->url(fn (DokumenSop $record) => asset('storage/' . $record->file_path))
+                        ->openUrlInNewTab(),
 
-                    ->visible(function (DokumenSop $record) {
-                        if ($record->status !== 'AKTIF' || !$record->tgl_review_berikutnya) return false;
-
-                        $now = now();
-                        // Muncul jika H-30 Review DAN H-30 Expired BELUM tercapai (biar gak bentrok)
-                        $isReviewTime = $now->diffInDays($record->tgl_review_berikutnya, false) <= 30;
-                        $isNearExpired = $record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
-
-                        return $isReviewTime && !$isNearExpired;
-                    })
-                    ->modalHeading('Konfirmasi Review Tahunan')
-                    ->modalDescription('Apakah ada perubahan pada isi dokumen SOP ini?')
-                    ->modalSubmitActionLabel('Tidak Ada Perubahan (Perpanjang)')
-                    ->modalCancelActionLabel('Ada Perubahan (Revisi)')
-
-                    // LOGIKA TOMBOL "TIDAK ADA PERUBAHAN" (Submit Modal)
-                    ->action(function (DokumenSop $record) {
-                        // Perpanjang 1 tahun lagi jadwal reviewnya
-                        $record->update([
-                            'tgl_review_berikutnya' => Carbon::parse($record->tgl_review_berikutnya)->addYear(),
-                            'updated_at' => now(), // Menandakan baru diupdate
-                        ]);
-
-                        Notification::make()->title('Review Selesai (Tidak Ada Perubahan)')->success()->send();
-                    })
-                    // LOGIKA TOMBOL "ADA PERUBAHAN" (Cancel Modal -> Dialihkan ke Edit)
-                    ->extraModalFooterActions([
-                        Tables\Actions\Action::make('edit_changes')
-                            ->label('Ada Perubahan (Edit Dokumen)')
-                            ->color('primary')
-                            ->url(fn (DokumenSop $record) => DokumenSopResource::getUrl('edit', ['record' => $record])),
-                    ]),
-
-                // Action Edit
-                Tables\Actions\EditAction::make()
-                    ->label(false)
-                    ->tooltip('Edit Data')
-                    ->disabled(function (DokumenSop $record) {
-                        if (in_array($record->status, ['DALAM REVIEW', 'REVISI'])) return false;
-                        if ($record->status === 'AKTIF') {
+                    // 3. Review Tahunan
+                    Tables\Actions\Action::make('review_tahunan')
+                        ->label('Perlu Review')
+                        ->icon('heroicon-s-exclamation-triangle')
+                        ->color('warning')
+                        // Hapus ->button() agar tampil sebagai menu item biasa dalam dropdown
+                        ->tooltip('SOP ini mendekati jadwal review tahunan. Klik untuk proses.')
+                        ->visible(function (DokumenSop $record) {
+                            if ($record->status !== 'AKTIF' || !$record->tgl_review_berikutnya) return false;
                             $now = now();
-                            $isReview = $record->tgl_review_berikutnya && $now->diffInDays($record->tgl_review_berikutnya, false) <= 30;
+                            $isReviewTime = $now->diffInDays($record->tgl_review_berikutnya, false) <= 30;
+                            $isNearExpired = $record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
+                            return $isReviewTime && !$isNearExpired;
+                        })
+                        ->modalHeading('Konfirmasi Review Tahunan')
+                        ->modalDescription('Apakah ada perubahan pada isi dokumen SOP ini?')
+                        ->modalSubmitActionLabel('Tidak Ada Perubahan (Perpanjang)')
+                        ->modalCancelActionLabel('Ada Perubahan (Revisi)')
+                        ->action(function (DokumenSop $record) {
+                            $record->update([
+                                'tgl_review_berikutnya' => Carbon::parse($record->tgl_review_berikutnya)->addYear(),
+                                'updated_at' => now(),
+                            ]);
+                            Notification::make()->title('Review Selesai (Tidak Ada Perubahan)')->success()->send();
+                        })
+                        ->extraModalFooterActions([
+                            Tables\Actions\Action::make('edit_changes')
+                                ->label('Ada Perubahan (Edit Dokumen)')
+                                ->color('primary')
+                                ->url(fn (DokumenSop $record) => DokumenSopResource::getUrl('edit', ['record' => $record])),
+                        ]),
 
-                            // JIKA KADALUARSA DEKAT -> FITUR EDIT DIBUKA
-                            $isExpired = $record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
+                    // 4. Edit Data
+                    Tables\Actions\EditAction::make()
+                        ->label('Edit')
+                        ->icon('heroicon-o-pencil-square')
+                        ->color('warning') // Warna biru
+                        ->tooltip('Edit Data')
+                        ->visible(fn (DokumenSop $record) => in_array($record->status, ['REVISI', 'DRAFT']))
+                        ->disabled(function (DokumenSop $record) {
+                            if (in_array($record->status, ['DRAFT', 'REVISI'])) return false;
+                            if ($record->status === 'AKTIF') {
+                                $now = now();
+                                $isReview = $record->tgl_review_berikutnya && $now->diffInDays($record->tgl_review_berikutnya, false) <= 30;
+                                $isExpired = $record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30;
+                                if ($isReview || $isExpired) return false;
+                            }
+                            return true;
+                        }),
 
-                            if ($isReview || $isExpired) return false;
-                        }
-                        return true;
-                    }),
+                    // 5. Hapus Data
+                    Tables\Actions\DeleteAction::make()
+                        ->label('Hapus')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger') // Warna merah
+                        ->visible(fn (DokumenSop $record) => in_array($record->status, ['REVISI', 'DRAFT']))
+                        ->successNotification(
+                            Notification::make()
+                                ->success()
+                                ->title('Berhasil dihapus.')
+                                ->body('Data dokumen SOP telah dihapus dari sistem.')
+                        )
 
-                // Action Delete
-                Tables\Actions\DeleteAction::make()
-                    ->label(false)
-                    ->tooltip('Hapus Data')
-                    ->visible(fn (DokumenSop $record) => in_array($record->status, ['DALAM REVIEW', 'REVISI'])),
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical') // Ikon titik tiga
+                    ->color('primary') // Warna ikon utama
+                    ->tooltip('Menu Aksi') // Tooltip saat hover ikon grup
+                    ->extraAttributes(['class' => 'w-auto min-w-[150px]']), // Lebar minimal agar tidak terlalu kecil
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

@@ -4,43 +4,40 @@ namespace App\Filament\SuperAdmin\Resources\UserResource\Pages;
 
 use App\Filament\SuperAdmin\Resources\UserResource;
 use Filament\Actions;
-use Filament\Notifications\Notification;
-use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
 
-class EditUser extends CreateRecord
+class EditUser extends EditRecord
 {
     protected static string $resource = UserResource::class;
 
-    // 1. REDIRECT KE LIST SETELAH SIMPAN
+    // 1. Custom Header Action (Tombol Hapus di pojok kanan atas)
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make()->label('Hapus User'),
+        ];
+    }
+
+    // 2. Redirect ke halaman List (Daftar) setelah Simpan
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
     }
 
-     // 2. CUSTOM NOTIFIKASI SUKSES (INI SOLUSINYA)
-    protected function getCreatedNotification(): ?Notification
-    {
-        return Notification::make()
-            ->success()
-            ->title('Akun Berhasil Ditambahkan') // Judul custom
-            ->body('Data akun baru telah tersimpan di sistem.') // Pesan custom
-            ->duration(5000); // Opsional: Durasi tampil (ms)
-    }
-
-    // 2. TERJEMAHKAN TOMBOL KE BAHASA INDONESIA
+    // 3. Custom Tombol Form (Simpan & Batal Bahasa Indonesia)
     protected function getFormActions(): array
     {
         return [
             Actions\Action::make('save')
-                ->label('Simpan')
-                ->submit('create')
+                ->label('Simpan Perubahan')
+                ->submit('save')
                 ->keyBindings(['mod+s']),
 
             Actions\Action::make('createAnother')
                 ->label('Simpan & Buat Baru')
                 ->action('createAnother')
                 ->color('gray'),
-
+                
             Actions\Action::make('cancel')
                 ->label('Batal')
                 ->url($this->getResource()::getUrl('index'))
