@@ -1,6 +1,6 @@
 @props([
     'activeLocale' => null,
-    'activeManager',
+    'activeManager' => null,
     'content' => null,
     'contentTabLabel' => null,
     'contentTabIcon' => null,
@@ -12,7 +12,6 @@
 
 <div class="fi-resource-relation-managers flex flex-col gap-y-6">
     @php
-        $activeManager = strval($activeManager);
         $normalizeRelationManagerClass = function (string | Filament\Resources\RelationManagers\RelationManagerConfiguration $manager): string {
             if ($manager instanceof \Filament\Resources\RelationManagers\RelationManagerConfiguration) {
                 return $manager->relationManager;
@@ -49,7 +48,7 @@
                 @endphp
 
                 <x-filament::tabs.item
-                    :active="$activeManager === $tabKey"
+                    :active="$relManagerKey === $tabKey"
                     :badge="filled($tabKey) ? ($isGroup ? $manager->getBadge() : $manager::getBadge($ownerRecord, $pageClass)) : null"
                     :badge-color="filled($tabKey) ? ($isGroup ? $manager->getBadgeColor() : $manager::getBadgeColor($ownerRecord, $pageClass)) : null"
                     :badge-tooltip="filled($tabKey) ? ($isGroup ? $manager->getBadgeTooltip() : $manager::getBadgeTooltip($ownerRecord, $pageClass)) : null"
@@ -66,11 +65,10 @@
             @endforeach
         </x-filament::tabs>
     @endif
-
-    @if (filled($activeManager) && isset($managers[$activeManager]))
+    @if (filled($activeManager ?? '') && isset($managers[$activeManager ?? '']))
         <div
             @if (count($managers) > 1)
-                id="relationManager{{ ucfirst($activeManager) }}"
+                id="relationManager{{ ucfirst($activeManager ?? '') }}"
                 role="tabpanel"
             @endif
             wire:key="{{ $this->getId() }}.relation-managers.active"
@@ -84,8 +82,8 @@
                 }
             @endphp
 
-            @if ($managers[$activeManager] instanceof \Filament\Resources\RelationManagers\RelationGroup)
-                @foreach ($managers[$activeManager]->ownerRecord($ownerRecord)->pageClass($pageClass)->getManagers() as $groupedManagerKey => $groupedManager)
+            @if ($managers[$activeManager ?? ''] instanceof \Filament\Resources\RelationManagers\RelationGroup)
+                @foreach ($managers[$activeManager ?? '']->ownerRecord($ownerRecord)->pageClass($pageClass)->getManagers() as $groupedManagerKey => $groupedManager)
                     @php
                         $normalizedGroupedManagerClass = $normalizeRelationManagerClass($groupedManager);
                     @endphp
@@ -93,19 +91,19 @@
                     @livewire(
                         $normalizedGroupedManagerClass,
                         [...$managerLivewireProperties, ...(($groupedManager instanceof \Filament\Resources\RelationManagers\RelationManagerConfiguration) ? [...$groupedManager->relationManager::getDefaultProperties(), ...$groupedManager->getProperties()] : $groupedManager::getDefaultProperties())],
-                        key("{$normalizedGroupedManagerClass}-{$groupedManagerKey}"),
+                        key: "{$normalizedGroupedManagerClass}-{$groupedManagerKey}",
                     )
                 @endforeach
             @else
                 @php
-                    $manager = $managers[$activeManager];
+                    $manager = $managers[$activeManager ?? ''];
                     $normalizedManagerClass = $normalizeRelationManagerClass($manager);
                 @endphp
 
                 @livewire(
                     $normalizedManagerClass,
                     [...$managerLivewireProperties, ...(($manager instanceof \Filament\Resources\RelationManagers\RelationManagerConfiguration) ? [...$manager->relationManager::getDefaultProperties(), ...$manager->getProperties()] : $manager::getDefaultProperties())],
-                    key($normalizedManagerClass),
+                    key: $normalizedManagerClass,
                 )
             @endif
         </div>
