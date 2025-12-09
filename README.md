@@ -129,7 +129,7 @@ Jika Anda menggunakan seeder bawaan, berikut adalah akun untuk testing:
 
 | Role | Username | Password |
 | :--- | :--- | :--- |
-| **Super Admin** | `admin` | `password` |
+| **Super Admin** | `superadmin` | `password` |
 | **Pengusul** | `pengusul` | `password` |
 | **Verifikator** | `verifikator` | `password` |
 | **Direksi** | `direksi` | `password` |
@@ -138,7 +138,7 @@ Jika Anda menggunakan seeder bawaan, berikut adalah akun untuk testing:
 
 ## 🤝 Kontribusi
 
-Projek ini dikembangkan oleh **[Nama Anda]** untuk keperluan operasional RSUP Prof. Dr. I.G.N.G. Ngoerah.
+Projek ini dikembangkan oleh **Akbar Johan Firdaus** untuk keperluan operasional RSUP Prof. Dr. I.G.N.G. Ngoerah.
 
 ---
 
