@@ -4,8 +4,11 @@ namespace App\Filament\Pengusul\Resources;
 
 use App\Filament\Pengusul\Resources\SopAktifResource\Pages;
 use App\Models\DokumenSop;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -60,6 +63,93 @@ class SopAktifResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([]); // Tidak butuh form edit karena ini view only
+    }
+
+    // --- INFOLIST (POP-UP DETAIL & PREVIEW SOP) ---
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                // Header: Judul Besar & Status
+                Infolists\Components\Section::make()
+                    ->schema([
+                        Infolists\Components\TextEntry::make('judul_sop')
+                            ->label('Judul Dokumen')
+                            ->weight('bold')
+                            ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                            ->columnSpanFull(),
+
+                        // Gunakan Grid 2 Kolom untuk detail
+                        Infolists\Components\Grid::make(2)
+                            ->schema([
+                                Infolists\Components\TextEntry::make('nomor_sk')
+                                    ->label('Nomor SK')
+                                    ->placeholder('-'),
+
+                                Infolists\Components\TextEntry::make('status')
+                                    ->badge()
+                                    ->color(fn (string $state): string => match ($state) {
+                                        'DALAM REVIEW' => 'warning',
+                                        'REVISI' => 'danger',
+                                        'AKTIF' => 'success',
+                                        default => 'gray',
+                                    }),
+
+                                Infolists\Components\TextEntry::make('unitTerkait.nama_unit')
+                                    ->label('Unit Terkait')
+                                    ->badge()
+                                    ->color('info')
+                                    ->placeholder('Internal Unit')
+                                    ->formatStateUsing(function ($state, DokumenSop $record) {
+                                        if ($record->is_all_units) {
+                                            return 'SELURUH UNIT / INSTALASI';
+                                        }
+                                        return $state;
+                                    })
+                                    ->color(fn (DokumenSop $record) => $record->is_all_units ? 'success' : 'info'),
+                            ]),
+                    ]),
+
+                // Section Validitas (3 TANGGAL PENTING)
+                Infolists\Components\Section::make('Validitas Dokumen')
+                    ->schema([
+                        Infolists\Components\Grid::make(3)
+                            ->schema([
+                                // 1. Tgl Disahkan (TTD)
+                                Infolists\Components\TextEntry::make('tgl_pengesahan')
+                                    ->label('Disahkan (TTD)')
+                                    ->date('d F Y')
+                                    ->icon('heroicon-m-pencil-square')
+                                    ->placeholder('-'),
+
+                                // 2. Review Date
+                                Infolists\Components\TextEntry::make('tgl_review_berikutnya')
+                                    ->label('Review Date')
+                                    ->date('d F Y')
+                                    ->icon('heroicon-m-clock')
+                                    ->color('warning')
+                                    ->placeholder('-'),
+
+                                // 3. Expired Date
+                                Infolists\Components\TextEntry::make('tgl_kadaluarsa')
+                                    ->label('Expired Date')
+                                    ->date('d F Y')
+                                    ->icon('heroicon-m-calendar-days')
+                                    ->color('danger')
+                                    ->placeholder('-'),
+                            ]),
+                    ]),
+
+                // PREVIEW PDF (DITENGAHKAN)
+                Infolists\Components\Section::make('Preview Dokumen')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('file_path')
+                            ->label('') // Label kosong agar bersih
+                            ->view('filament.infolists.pdf-viewer')
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible(), // Bisa dilipat jika ingin ringkas
+            ]);
     }
 
     // --- TABEL ---
