@@ -111,13 +111,29 @@
                 isLoading: false,
                 search: new URLSearchParams(window.location.search).get('search') || '',
                 direktoratId: new URLSearchParams(window.location.search).get('direktorat_id') || '',
+                currentPath: window.location.pathname + window.location.search, // Track path + query only
                 
                 init() {
                     this.darkMode = localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
                     
+                    // --- 1. SEARCH DELAY LOGIC (DEBOUNCE) ---
+                    // Kita watch variabel 'search'. Karena di input pakai x-model.debounce.500ms,
+                    // maka watch ini baru akan jalan 500ms setelah user berhenti mengetik.
+                    this.$watch('search', value => {
+                        this.handleSearch();
+                    });
+
                     // Handle browser back/forward buttons
                     window.addEventListener('popstate', () => {
-                        this.updateResults(window.location.href, false);
+                        const newPath = window.location.pathname + window.location.search;
+                        // HANYA Reload jika Path atau Query berubah (bukan Hash #)
+                        if (newPath !== this.currentPath) {
+                            this.currentPath = newPath;
+                            // Update values from URL
+                            this.search = new URLSearchParams(window.location.search).get('search') || '';
+                            this.direktoratId = new URLSearchParams(window.location.search).get('direktorat_id') || '';
+                            this.updateResults(window.location.href, false);
+                        }
                     });
                 },
 
@@ -128,15 +144,20 @@
                     else document.documentElement.classList.remove('dark');
                 },
 
+                // --- SCROLL HELPERS (TANPA RELOAD) ---
                 scrollToTop() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
+                scrollToSection(id) {
+                    const el = document.getElementById(id);
+                    if(el) el.scrollIntoView({ behavior: 'smooth' });
+                },
 
-                // --- LOGIC FETCH AJAX UTAMA ---
+                // AJAX Fetch Logic
                 async updateResults(url = null, pushToHistory = true) {
                     this.isLoading = true;
                     
-                    // Bangun URL jika tidak diberikan
+                    // Build URL if not provided
                     if (!url) {
                          const params = new URLSearchParams();
                         if (this.search) params.append('search', this.search);
@@ -164,20 +185,26 @@
 
                             if (pushToHistory) {
                                 window.history.pushState({}, '', url);
+                                this.currentPath = window.location.pathname + window.location.search;
                             }
                             
-                            // Scroll ke bagian daftar dokumen (bukan top page)
+                            // Scroll sedikit ke atas list agar user tahu data berubah
+                            // Cek jika kita tidak sedang di bagian atas
                             const target = document.getElementById('dokumen');
-                            const offset = 80; // Navbar offset
-                            const bodyRect = document.body.getBoundingClientRect().top;
-                            const elementRect = target.getBoundingClientRect().top;
-                            const elementPosition = elementRect - bodyRect;
-                            const offsetPosition = elementPosition - offset;
+                            if(target) {
+                                const offset = 80; // Navbar offset
+                                const bodyRect = document.body.getBoundingClientRect().top;
+                                const elementRect = target.getBoundingClientRect().top;
+                                const elementPosition = elementRect - bodyRect;
+                                const offsetPosition = elementPosition - offset;
 
-                            window.scrollTo({
-                                top: offsetPosition,
-                                behavior: 'smooth'
-                            });
+                                if (window.pageYOffset > offsetPosition) {
+                                    window.scrollTo({
+                                        top: offsetPosition,
+                                        behavior: 'smooth'
+                                    });
+                                }
+                            }
                         }
 
                     } catch (error) {
@@ -226,7 +253,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center">
                 
-                <a href="{{ route('landing-page') }}" class="flex items-center space-x-3 group cursor-pointer">
+                <a href="{{ route('landing-page') }}" @click.prevent="scrollToTop()" class="flex items-center space-x-3 group cursor-pointer">
                     <div class="relative">
                         <div class="absolute inset-0 bg-emerald-500 blur-lg opacity-20 rounded-full group-hover:opacity-40 transition duration-300"></div>
                         <img src="{{ asset('images/logo-rs.png') }}" alt="Logo RS" class="relative h-12 w-auto object-contain dark:bg-white/10 rounded-lg p-1 backdrop-blur-sm shadow-sm">
@@ -238,9 +265,10 @@
                 </a>
 
                 <div class="hidden md:flex items-center space-x-1 p-1 bg-white/50 dark:bg-white/5 rounded-full backdrop-blur-md border border-gray-200/50 dark:border-white/5 shadow-sm">
-                    <a href="{{ route('landing-page') }}" class="px-5 py-2 text-sm font-semibold rounded-full text-brand-700 bg-brand-50 dark:text-brand-300 dark:bg-brand-900/30 transition-all cursor-pointer">Beranda</a>
-                    <a href="#fitur" class="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Fitur</a>
-                    <a href="#dokumen" class="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Cari SOP</a>
+                    <a href="{{ route('landing-page') }}" @click.prevent="scrollToTop()" class="px-5 py-2 text-sm font-semibold rounded-full text-brand-700 bg-brand-50 dark:text-brand-300 dark:bg-brand-900/30 transition-all cursor-pointer">Beranda</a>
+                    
+                    <button @click="scrollToSection('fitur')" class="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Fitur</button>
+                    <button @click="scrollToSection('dokumen')" class="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Cari SOP</button>
                 </div>
 
                 <div class="hidden md:flex items-center gap-4">
@@ -278,9 +306,11 @@
 
         <div x-show="mobileMenuOpen" x-collapse class="md:hidden glass border-t border-gray-100 dark:border-white/5">
             <div class="px-4 py-4 space-y-2">
-                <a href="{{ route('landing-page') }}" class="block px-4 py-3 rounded-lg bg-gray-50 dark:bg-white/5 text-brand-700 dark:text-brand-300 font-medium">Beranda</a>
-                <a href="#fitur" @click="mobileMenuOpen = false" class="block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Fitur</a>
-                <a href="#dokumen" @click="mobileMenuOpen = false" class="block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Cari SOP</a>
+                <a href="#beranda" @click="mobileMenuOpen = false; scrollToTop()" class="block px-4 py-3 rounded-lg bg-gray-50 dark:bg-white/5 text-brand-700 dark:text-brand-300 font-medium">Beranda</a>
+                
+                <button @click="mobileMenuOpen = false; scrollToSection('fitur')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Fitur</button>
+                <button @click="mobileMenuOpen = false; scrollToSection('dokumen')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Cari SOP</button>
+                
                 <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-white/10">
                     <a href="/pengusul" class="text-center py-2.5 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-lg text-sm font-semibold">Pengusul</a>
                     <a href="/verifikator" class="text-center py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-semibold">Verifikator</a>
@@ -293,6 +323,7 @@
 
     <header class="relative pt-32 pb-16 lg:pt-48 lg:pb-24 overflow-hidden z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+            
             <div data-aos="fade-down" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-100 dark:bg-brand-900/30 dark:border-brand-800/50 mb-8 backdrop-blur-sm">
                 <span class="flex h-2 w-2 relative">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
@@ -311,14 +342,33 @@
             </p>
 
             <div data-aos="fade-up" data-aos-delay="400" class="flex flex-col sm:flex-row justify-center gap-4">
-                <button onclick="document.getElementById('dokumen').scrollIntoView({behavior: 'smooth'})" 
+                <button @click="scrollToSection('dokumen')" 
                         class="px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold text-lg shadow-xl shadow-gray-900/20 hover:scale-105 hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 group">
                     <span>Mulai Pencarian</span>
                     <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                 </button>
-                <a href="#fitur" class="px-8 py-4 bg-white dark:bg-white/10 text-gray-700 dark:text-white rounded-xl font-bold text-lg border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/20 transition-all duration-300 backdrop-blur-sm">
+                <button @click="scrollToSection('fitur')" class="px-8 py-4 bg-white dark:bg-white/10 text-gray-700 dark:text-white rounded-xl font-bold text-lg border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/20 transition-all duration-300 backdrop-blur-sm">
                     Pelajari Fitur
-                </a>
+                </button>
+            </div>
+
+            <div class="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-4xl mx-auto">
+                <div data-aos="fade-up" data-aos-delay="500" class="glass-card p-4 rounded-2xl text-center transform hover:scale-105 transition-transform duration-300">
+                    <p class="text-3xl font-bold text-brand-600 dark:text-brand-400">{{ $sop_list->total() }}+</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">Dokumen Aktif</p>
+                </div>
+                <div data-aos="fade-up" data-aos-delay="600" class="glass-card p-4 rounded-2xl text-center transform hover:scale-105 transition-transform duration-300">
+                    <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">24/7</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">Akses Online</p>
+                </div>
+                 <div data-aos="fade-up" data-aos-delay="700" class="glass-card p-4 rounded-2xl text-center transform hover:scale-105 transition-transform duration-300">
+                    <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">100%</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">Digital</p>
+                </div>
+                 <div data-aos="fade-up" data-aos-delay="800" class="glass-card p-4 rounded-2xl text-center transform hover:scale-105 transition-transform duration-300">
+                    <p class="text-3xl font-bold text-amber-600 dark:text-amber-400">ISO</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">Terstandarisasi</p>
+                </div>
             </div>
         </div>
     </header>
@@ -346,7 +396,7 @@
                     <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Verifikasi Online</h3>
                     <p class="text-gray-500 dark:text-gray-400 leading-relaxed text-sm">Alur persetujuan yang sistematis dan tercatat dari unit hingga direksi.</p>
                 </div>
-                 <div data-aos="fade-up" data-aos-delay="300" class="group p-8 rounded-3xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 hover:border-purple-500/50 dark:hover:border-purple-500/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                <div data-aos="fade-up" data-aos-delay="300" class="group p-8 rounded-3xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 hover:border-purple-500/50 dark:hover:border-purple-500/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
                     <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-pink-600 flex items-center justify-center mb-6 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition duration-300">
                         <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
@@ -371,7 +421,7 @@
                     <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                         <svg class="h-6 w-6 text-gray-400 group-focus-within:text-brand-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
-                    <input type="text" x-model.debounce.500ms="search" @input="handleSearch"
+                    <input type="text" x-model.debounce.500ms="search"
                            class="block w-full pl-14 pr-4 py-5 rounded-2xl bg-gray-50 dark:bg-dark-800 border-2 border-transparent focus:border-brand-500 focus:bg-white dark:focus:bg-dark-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none transition-all shadow-inner"
                            placeholder="Cari SOP berdasarkan judul atau nomor SK...">
                 </div>
@@ -540,9 +590,9 @@
                 <div>
                     <h4 class="text-white font-bold mb-6 text-lg">Menu Utama</h4>
                     <ul class="space-y-3 text-sm text-gray-400">
-                        <li><a href="{{ route('landing-page') }}" class="hover:text-brand-400 transition flex items-center gap-2"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> Beranda</a></li>
-                        <li><a href="#fitur" class="hover:text-brand-400 transition flex items-center gap-2"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> Fitur</a></li>
-                        <li><a href="#dokumen" class="hover:text-brand-400 transition flex items-center gap-2"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> Cari SOP</a></li>
+                        <li><a href="{{ route('landing-page') }}" @click.prevent="scrollToTop()" class="hover:text-brand-400 transition flex items-center gap-2"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> Beranda</a></li>
+                        <li><button @click="scrollToSection('fitur')" class="hover:text-brand-400 transition flex items-center gap-2 text-left"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> Fitur</button></li>
+                        <li><button @click="scrollToSection('dokumen')" class="hover:text-brand-400 transition flex items-center gap-2 text-left"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> Cari SOP</button></li>
                     </ul>
                 </div>
 
