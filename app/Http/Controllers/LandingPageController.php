@@ -32,7 +32,8 @@ class LandingPageController extends Controller
         }
 
         // 5. Pagination dengan Fragment (Agar tidak scroll ke atas)
-        $sop_list = $query->orderBy('created_at', 'desc')
+        // Urutkan berdasarkan tanggal pengesahan (saat SOP disetujui & menjadi aktif)
+        $sop_list = $query->orderBy('tgl_pengesahan', 'desc')
             ->paginate(6)
             ->withQueryString()
             ->fragment('dokumen'); // <--- INI KUNCI AGAR LAYAR TETAP DI LIST

@@ -43,9 +43,6 @@ class VerifikatorPanelProvider extends PanelProvider
             ->favicon(asset('images/faviconlogo-rs.svg'))
             ->plugins([
                 FilamentBackgroundsPlugin::make()
-                    // ->imageProvider(CuratedBySwis::make())
-                    // ->showAttribution(false),
-
                     ->imageProvider(
                         MyImages::make()
                             ->directory('images/swisnl/filament-backgrounds/curated-by-swis') // Pastikan path ini benar ada di folder 'public'
@@ -60,7 +57,6 @@ class VerifikatorPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Verifikator/Widgets'), for: 'App\\Filament\\Verifikator\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
-               // Widgets\FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

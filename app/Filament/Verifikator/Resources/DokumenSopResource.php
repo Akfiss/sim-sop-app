@@ -14,14 +14,21 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification as FilamentNotification;
 use Carbon\Carbon;
-use Illuminate\Support\HtmlString; // Import ini penting
+use Illuminate\Support\HtmlString;
 
 class DokumenSopResource extends Resource
 {
     protected static ?string $model = DokumenSop::class;
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    protected static ?string $navigationLabel = 'Verifikasi SOP';
-    protected static ?string $pluralModelLabel = 'Verifikasi SOP';
+    // --- UBAH BAGIAN INI ---
+    protected static ?string $navigationLabel = 'Verifikasi SOP'; // Nama Menu di Sidebar
+    protected static ?string $pluralModelLabel = 'Verifikasi SOP'; // Judul di Halaman List
+    protected static ?string $modelLabel = 'Dokumen SOP';
+    
+    // Grouping
+    protected static ?string $navigationGroup = 'Pengelolaan SOP'; // Nama Grup
+    protected static ?int $navigationSort = 1;
+    // -----------------------
 
     public static function canCreate(): bool { return false; }
 
@@ -230,6 +237,19 @@ class DokumenSopResource extends Resource
 
                         FilamentNotification::make()->title('Alert terkirim ke Pengusul')->success()->send();
                     }),
+            ]);
+    }
+
+    // --- FILTER PENTING: SEMBUNYIKAN DRAFT DARI VERIFIKATOR ---
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            // Verifikator tidak boleh melihat status DRAFT
+            ->where('status', '!=', 'DRAFT') 
+            
+            // Opsional: Agar tidak melihat soft deleted items (jika pakai soft deletes)
+            ->withoutGlobalScopes([
+                // SoftDeletingScope::class, 
             ]);
     }
 
