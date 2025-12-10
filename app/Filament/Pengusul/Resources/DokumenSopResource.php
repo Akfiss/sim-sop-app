@@ -153,94 +153,77 @@ class DokumenSopResource extends Resource
 
     }
 
-    // --- 1. METODE BARU: TAMPILAN POP-UP (EYE ICON) ---
-    public static function infolist(Infolist $infolist): Infolist
+    // --- 1. Buat Method Baru untuk menyimpan Schema (Agar bisa dipanggil dari luar) ---
+    public static function getInfolistSchema(): array
     {
-        return $infolist
-            ->schema([
-                // Header: Judul Besar & Status
-                Infolists\Components\Section::make()
-                    ->schema([
-                        Infolists\Components\TextEntry::make('judul_sop')
-                            ->label('Judul Dokumen')
-                            ->weight('bold')
-                            ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
-                            ->columnSpanFull(),
+        return [
+            // Header: Judul Besar & Status
+            Infolists\Components\Section::make()
+                ->schema([
+                    Infolists\Components\TextEntry::make('judul_sop')
+                        ->label('Judul Dokumen')
+                        ->weight('bold')
+                        ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                        ->columnSpanFull(),
 
-                        // Gunakan Grid 2 Kolom untuk detail
-                        Infolists\Components\Grid::make(2)
-                            ->schema([
-                                Infolists\Components\TextEntry::make('nomor_sk')
-                                    ->label('Nomor SK')
-                                    ->placeholder('-'),
-
-                                Infolists\Components\TextEntry::make('status')
-                                    ->badge()
-                                    ->color(fn (string $state): string => match ($state) {
-                                        'DALAM REVIEW' => 'warning',
-                                        'REVISI' => 'danger',
-                                        'AKTIF' => 'success',
-                                        default => 'gray',
-                                    }),
-
-                                Infolists\Components\TextEntry::make('unitTerkait.nama_unit')
-                                    ->label('Unit Terkait')
-                                    ->badge()
-                                    ->color('info')
-                                    ->placeholder('Internal Unit')
-                                    ->formatStateUsing(function ($state, DokumenSop $record) {
-                                        if ($record->is_all_units) {
-                                            return 'SELURUH UNIT / INSTALASI';
-                                        }
-                                        return $state;
-                                    })
-                                    ->color(fn (DokumenSop $record) => $record->is_all_units ? 'success' : 'info'),
-                            ]),
-                    ]),
-
-                // Section Validitas (UPDATE DISINI: 3 TANGGAL)
-                Infolists\Components\Section::make('Validitas Dokumen')
-                    ->schema([
-                        Infolists\Components\Grid::make(3)
-                            ->schema([
-                                // 1. Tgl Disahkan (TTD)
-                                Infolists\Components\TextEntry::make('tgl_pengesahan')
-                                    ->label('Disahkan (TTD)')
-                                    ->date('d F Y')
-                                    ->icon('heroicon-m-pencil-square')
-                                    ->placeholder('-'),
-
-                                // 2. Review Date
-                                Infolists\Components\TextEntry::make('tgl_review_berikutnya')
-                                    ->label('Review Date')
-                                    ->date('d F Y')
-                                    ->icon('heroicon-m-clock')
-                                    ->color('warning')
-                                    ->placeholder('-'),
-
-                                // 3. Expired Date
-                                Infolists\Components\TextEntry::make('tgl_kadaluarsa')
-                                    ->label('Expired Date')
-                                    ->date('d F Y')
-                                    ->icon('heroicon-m-calendar-days')
-                                    ->color('danger')
-                                    ->placeholder('-'),
-                            ]),
-                    ]),
-
-                // PREVIEW PDF (DITENGAHKAN)
-                    Infolists\Components\Section::make('Preview Dokumen')
+                    // Grid 2 Kolom
+                    Infolists\Components\Grid::make(2)
                         ->schema([
-                            Infolists\Components\TextEntry::make('file_path')
-                                ->label('') // Label kosong agar bersih
-                                ->view('filament.infolists.pdf-viewer')
-                                ->columnSpanFull(),
-    ])
-                    ->collapsible(), // Bisa dilipat jika ingin ringkas
-            ]);
+                            Infolists\Components\TextEntry::make('nomor_sk')
+                                ->label('Nomor SK')
+                                ->placeholder('-'),
+
+                            Infolists\Components\TextEntry::make('status')
+                                ->badge()
+                                ->color(fn (string $state): string => match ($state) {
+                                    'DALAM REVIEW' => 'warning',
+                                    'REVISI' => 'danger',
+                                    'AKTIF' => 'success',
+                                    default => 'gray',
+                                }),
+
+                            Infolists\Components\TextEntry::make('unitTerkait.nama_unit')
+                                ->label('Unit Terkait')
+                                ->badge()
+                                ->color(fn ($record) => $record->is_all_units ? 'success' : 'info')
+                                ->getStateUsing(function ($record) {
+                                    if ($record->is_all_units) return 'SELURUH UNIT / INSTALASI';
+                                    $units = $record->unitTerkait->pluck('nama_unit');
+                                    return $units->count() > 0 ? $units : 'Internal Unit';
+                                }),
+                        ]),
+                ]),
+
+            // Section Validitas
+            Infolists\Components\Section::make('Validitas Dokumen')
+                ->schema([
+                    Infolists\Components\Grid::make(3)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('tgl_pengesahan')->label('Disahkan (TTD)')->date('d F Y')->icon('heroicon-m-pencil-square')->placeholder('-'),
+                            Infolists\Components\TextEntry::make('tgl_review_berikutnya')->label('Review Date')->date('d F Y')->icon('heroicon-m-clock')->color('warning')->placeholder('-'),
+                            Infolists\Components\TextEntry::make('tgl_kadaluarsa')->label('Expired Date')->date('d F Y')->icon('heroicon-m-calendar-days')->color('danger')->placeholder('-'),
+                        ]),
+                ]),
+
+            // Preview PDF
+            Infolists\Components\Section::make('Preview Dokumen')
+                ->schema([
+                    Infolists\Components\TextEntry::make('file_path')
+                        ->label('')
+                        ->view('filament.infolists.pdf-viewer')
+                        ->columnSpanFull(),
+                ])
+                ->collapsible(),
+        ];
     }
 
-    // --- 2. UPDATE TABEL (CLEAN & ICON ONLY) ---
+    // --- 2. Update Method infolist() bawaan Resource agar mengambil dari fungsi di atas ---
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist->schema(self::getInfolistSchema());
+    }
+
+    // --- 3. UPDATE TABEL (CLEAN & ICON ONLY) ---
     public static function table(Table $table): Table
     {
         return $table

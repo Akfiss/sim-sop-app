@@ -68,7 +68,7 @@
 
                         {{-- Nama Lengkap --}}
                         <span class="text-sm font-bold leading-none truncate transition-all duration-300
-                            text-gray-950 dark:text-white
+                            text-gray-950 dark:text-gray-400
                             group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r
                             group-hover:from-primary-600 group-hover:via-purple-600 group-hover:to-primary-600
                             dark:group-hover:from-primary-400 dark:group-hover:via-purple-400 dark:group-hover:to-primary-400">

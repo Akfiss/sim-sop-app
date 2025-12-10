@@ -200,7 +200,10 @@ class DokumenSopResource extends Resource
                             ->rows(4)
                     ])
                     ->action(function (DokumenSop $record, array $data) {
-                        $record->update(['status' => 'REVISI']);
+                        // FIX: Pass catatan revisi ke model sebelum save agar ditangkap Observer
+                        $record->catatan_revisi = $data['catatan'];
+                        $record->status = 'REVISI';
+                        $record->save();
 
                         Notifikasi::create([
                             'id_user' => $record->created_by,

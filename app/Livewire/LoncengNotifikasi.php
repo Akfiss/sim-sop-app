@@ -3,15 +3,27 @@
 namespace App\Livewire;
 
 use App\Models\Notifikasi;
+use App\Models\DokumenSop;
+use App\Filament\Pengusul\Resources\DokumenSopResource;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Infolists\Infolist;
 
-class LoncengNotifikasi extends Component
+class LoncengNotifikasi extends Component implements HasActions, HasForms
 {
-    public $limit = 5; // Load awal 5 saja agar ringan
-    public $selectedNotification = null; // <--- Untuk menampung data Modal
+    use InteractsWithActions;
+    use InteractsWithForms;
 
-    // Menggunakan Computed Property agar reaktif
+    public $limit = 5;
+    public $selectedNotification = null;
+
+    // ... (kode getNotificationsProperty, count, loadMore biarkan sama) ...
+
     public function getNotificationsProperty()
     {
         return Notifikasi::where('id_user', Auth::user()->id_user)
@@ -19,55 +31,32 @@ class LoncengNotifikasi extends Component
             ->take($this->limit)
             ->get();
     }
-
+    
     public function getUnreadCountProperty()
     {
-        return Notifikasi::where('id_user', Auth::user()->id_user)
-            ->where('is_read', false)
-            ->count();
+        return Notifikasi::where('id_user', Auth::user()->id_user)->where('is_read', false)->count();
     }
 
     public function getTotalCountProperty()
     {
         return Notifikasi::where('id_user', Auth::user()->id_user)->count();
     }
-
+    
     public function loadMore()
     {
-        $this->limit += 5; // Load 5 lagi saat discroll/klik
+        $this->limit += 5;
     }
 
-    // Fungsi Baru: Buka Modal Detail
     public function openDetail($id)
     {
         $notif = Notifikasi::find($id);
-
         if ($notif && $notif->id_user === Auth::user()->id_user) {
-            // 1. Simpan data ke variabel public agar bisa dibaca Modal
             $this->selectedNotification = $notif;
-
-            // 2. Otomatis tandai sudah dibaca
+            
             if (!$notif->is_read) {
                 $notif->update(['is_read' => true]);
             }
-
-            // 3. Perintahkan browser buka modal 'detail-notifikasi'
             $this->dispatch('open-modal', id: 'detail-notifikasi');
-        }
-    }
-
-    public function markAsRead($id)
-    {
-        $notif = Notifikasi::find($id);
-        if ($notif && $notif->id_user === Auth::user()->id_user) {
-            $notif->update(['is_read' => true]);
-
-            // Redirect jika ada ID SOP
-            if ($notif->id_sop) {
-                // Sesuaikan redirect sesuai role (Pengusul/Verifikator)
-                // Ini contoh default, bisa disesuaikan nanti
-                return redirect()->back();
-            }
         }
     }
 
@@ -76,6 +65,25 @@ class LoncengNotifikasi extends Component
         Notifikasi::where('id_user', Auth::user()->id_user)
             ->where('is_read', false)
             ->update(['is_read' => true]);
+    }
+
+    // --- WAJIB DITAMBAHKAN: ACTION UNTUK TOMBOL 'LIHAT DOKUMEN' ---
+    public function viewSopAction(): Action
+    {
+        return Action::make('viewSop')
+            ->label('Lihat Dokumen SOP')
+            ->button() // Tampil sebagai tombol
+            ->color('primary')
+            ->modalHeading('Detail Dokumen SOP')
+            ->modalWidth('4xl')
+            ->modalSubmitAction(false) 
+            ->modalCancelActionLabel('Tutup')
+            ->record(fn (array $arguments) => DokumenSop::find($arguments['dokumen_id']))
+            ->infolist(fn ($record) => 
+                Infolist::make()
+                    ->record($record)
+                    ->schema(DokumenSopResource::getInfolistSchema()) 
+            );
     }
 
     public function render()

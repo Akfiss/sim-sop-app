@@ -18,6 +18,9 @@ class DokumenSop extends Model
     // Pastikan timestamps menyala karena di migration ada created_at
     public $timestamps = true;
 
+    // Property sementara untuk menampung pesan revisi (tidak disimpan di database tabel ini)
+    public $catatan_revisi = null;
+
     protected $fillable = [
         'id_sop', 'nomor_sk', 'judul_sop', 'kategori_sop', 'is_all_units',
         'file_path', 'tgl_pengesahan', 'tgl_berlaku',
@@ -59,5 +62,12 @@ class DokumenSop extends Model
             'id_sop',
             'id_unit'
         );
+    }
+
+    // Relasi One-to-Many: Satu SOP memiliki banyak riwayat
+    public function riwayat()
+    {
+        return $this->hasMany(RiwayatSop::class, 'id_sop', 'id_sop')
+            ->orderBy('created_at', 'desc');
     }
 }

@@ -13,16 +13,15 @@ return new class extends Migration
     {
         // 1. Tabel Direktorat
         Schema::create('tb_direktorat', function (Blueprint $table) {
-            $table->char('id_direktorat', 5)->primary();
+            $table->char('id_direktorat', 10)->primary();
             $table->string('nama_direktorat', 100);
-            // Laravel defaultnya tidak pakai timestamp di desain Anda, jadi tidak perlu $table->timestamps();
         });
 
         // 2. Tabel Unit Kerja
         Schema::create('tb_unit_kerja', function (Blueprint $table) {
-            $table->char('id_unit', 5)->primary();
+            $table->char('id_unit', 10)->primary();
             $table->string('nama_unit', 50);
-            $table->char('id_direktorat', 5);
+            $table->char('id_direktorat', 10);
 
             // Foreign Key
             $table->foreign('id_direktorat')

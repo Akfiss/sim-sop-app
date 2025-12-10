@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class UnitKerja extends Model
 {
@@ -15,6 +16,18 @@ class UnitKerja extends Model
     public $timestamps = false;
 
     protected $fillable = ['id_unit', 'nama_unit', 'id_direktorat'];
+
+    // Otomatis Generate ID saat Create (agar user tidak perlu isi ID manual)
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            // Contoh ID: UNIT-12345 (Random 5 string)
+            if (empty($model->id_unit)) {
+                $model->id_unit = 'UNIT-' . strtoupper(Str::random(5));
+            }
+        });
+    }
 
     // Relasi kebalikan: Unit Kerja milik satu Direktorat
     public function direktorat()

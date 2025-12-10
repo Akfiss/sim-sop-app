@@ -40,7 +40,7 @@ return new class extends Migration
             $table->integer('id_unit_user')->autoIncrement(); // Primary Key AI
             // $table->char('id_user', length: 5);
             $table->unsignedBigInteger('id_user');
-            $table->char('id_unit', 5);
+            $table->char('id_unit', 10);
 
             // Foreign Keys
             $table->foreign('id_user')->references('id_user')->on('tb_users')->onDelete('cascade');

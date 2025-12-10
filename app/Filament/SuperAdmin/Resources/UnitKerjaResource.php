@@ -29,8 +29,9 @@ class UnitKerjaResource extends Resource
                 // 1. Input ID Unit (Manual)
                 Forms\Components\TextInput::make('id_unit')
                     ->label('Kode Unit')
-                    ->required()
                     ->maxLength(5)
+                    ->disabled()
+                    ->placeholder('Otomatis membuat id unit')
                     ->unique(ignoreRecord: true),
 
                 // 2. Input Nama Unit

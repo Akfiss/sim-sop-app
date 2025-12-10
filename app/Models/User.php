@@ -86,4 +86,10 @@ class User extends Authenticatable implements FilamentUser, HasName, CanResetPas
     {
         return $this->belongsToMany(UnitKerja::class, 'tb_unit_user', 'id_user', 'id_unit');
     }
+
+    // Relasi ke Riwayat SOP (One to Many)
+    public function riwayatSop()
+    {
+        return $this->hasMany(RiwayatSop::class, 'id_user', 'id_user');
+    }
 }

@@ -44,7 +44,7 @@ class CustomLogin extends Login
         return TextInput::make('username')
             ->label('Username')
             ->required()
-            ->autocomplete()
+            ->autocomplete('username')
             ->autofocus();
     }
 

@@ -14,9 +14,11 @@ return new class extends Migration
        // 1. Tabel Dokumen SOP
         Schema::create('tb_dokumen_sop', function (Blueprint $table) {
             $table->char('id_sop', 10)->primary();
-            $table->string('nomor_sk', 50)->nullable()->unique(); // Nullable jika belum ada SK
+            $table->string('nomor_sk', 50)->nullable()->unique();
             $table->string('judul_sop', 255);
             $table->enum('kategori_sop', ['SOP', 'SOP_AP'])->default('SOP');
+            // Menambahkan kolom boolean untuk SOP AP All Units (sesuai update sebelumnya)
+            $table->boolean('is_all_units')->default(false); 
             $table->string('file_path', 255)->nullable();
 
             $table->date('tgl_pengesahan')->nullable();
@@ -24,10 +26,18 @@ return new class extends Migration
             $table->date('tgl_review_berikutnya')->nullable();
             $table->date('tgl_kadaluarsa')->nullable();
 
-            $table->enum('status', ['DALAM REVIEW', 'REVISI', 'AKTIF', 'KADALUARSA'])->default('DALAM REVIEW');
+            // Update ENUM Status agar lengkap sesuai kebutuhan sistem saat ini
+            $table->enum('status', [
+                'DRAFT', 
+                'DALAM REVIEW', 
+                'REVISI', 
+                'AKTIF', 
+                'KADALUARSA', 
+                'ARCHIVED'
+            ])->default('DALAM REVIEW'); // Default DRAFT agar aman saat create baru
 
             // Foreign Keys Columns
-            $table->char('id_unit_pemilik', 5);
+            $table->char('id_unit_pemilik', 10);
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->unsignedBigInteger('deleted_by')->nullable();
@@ -47,21 +57,31 @@ return new class extends Migration
         Schema::create('tb_sop_unit_terkait', function (Blueprint $table) {
             $table->integer('id')->autoIncrement();
             $table->char('id_sop', 10);
-            $table->char('id_unit', 5);
+            $table->char('id_unit', 10);
 
             $table->foreign('id_sop')->references('id_sop')->on('tb_dokumen_sop')->onDelete('cascade');
             $table->foreign('id_unit')->references('id_unit')->on('tb_unit_kerja')->onDelete('cascade');
         });
 
-        // 3. Tabel Riwayat SOP
+        // 3. Tabel Riwayat SOP (HISTORY)
         Schema::create('tb_riwayat_sop', function (Blueprint $table) {
             $table->integer('id_riwayat')->autoIncrement();
-            $table->text('catatan')->nullable();
-            $table->enum('aksi', ['PENGAJUAN', 'PERSETUJUAN', 'REVISI', 'UPLOAD_ULANG']);
-            $table->string('dokumen_path', 255)->nullable();
-            $table->dateTime('created_at')->useCurrent();
+            $table->text('catatan')->nullable(); // Catatan revisi/persetujuan
+            $table->enum('status_sop', [
+                'DRAFT', 
+                'DALAM REVIEW', 
+                'REVISI', 
+                'AKTIF', 
+                'KADALUARSA', 
+                'ARCHIVED'
+            ]);
 
-            $table->unsignedBigInteger('id_user');
+            $table->string('dokumen_path', 255)->nullable(); // Snapshot file saat status ini dibuat
+            
+            // PERUBAHAN: Menambahkan updated_at (menggunakan timestamps untuk created_at & updated_at)
+            $table->timestamps(); 
+
+            $table->unsignedBigInteger('id_user'); // Siapa yang melakukan aksi ini
             $table->char('id_sop', 10);
 
             $table->foreign('id_user')->references('id_user')->on('tb_users');
@@ -74,10 +94,14 @@ return new class extends Migration
             $table->string('judul', 100);
             $table->string('pesan', 255)->nullable();
             $table->boolean('is_read')->default(false);
+            
+            // Opsional: Tambahkan data JSON untuk menyimpan id_sop, tipe_aksi, dll agar lebih fleksibel
+            $table->json('data')->nullable(); 
+
             $table->dateTime('created_at')->useCurrent();
 
             $table->unsignedBigInteger('id_user');
-            $table->char('id_sop', 10)->nullable();
+            $table->char('id_sop', 10)->nullable(); // Relasi opsional ke SOP
 
             $table->foreign('id_user')->references('id_user')->on('tb_users')->onDelete('cascade');
             $table->foreign('id_sop')->references('id_sop')->on('tb_dokumen_sop')->onDelete('set null');
