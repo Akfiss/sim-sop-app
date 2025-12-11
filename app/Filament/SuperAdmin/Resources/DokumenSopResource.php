@@ -9,7 +9,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use App\Models\RiwayatSop;
 
 class DokumenSopResource extends Resource
 {
@@ -17,14 +19,14 @@ class DokumenSopResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-duplicate';
     protected static ?string $navigationLabel = 'Semua Dokumen SOP';
-    protected static ?string $navigationGroup = 'Manajemen SOP'; // Grup Menu Baru
+    protected static ?string $navigationGroup = 'Manajemen SOP';
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
+        // ... (Keep existing form)
         return $form
             ->schema([
-                // Form admin biasanya full control, kita tampilkan semua field penting
                 Forms\Components\Section::make('Detail Dokumen')
                     ->schema([
                         Forms\Components\TextInput::make('judul_sop')
@@ -41,7 +43,7 @@ class DokumenSopResource extends Resource
                                 'REVISI' => 'Revisi',
                                 'AKTIF' => 'Aktif',
                                 'KADALUARSA' => 'Kadaluarsa',
-                                'ARCHIVED' => 'Diarsipkan (Non-Aktif)', // Status Baru
+                                'ARCHIVED' => 'Diarsipkan (Non-Aktif)',
                             ])
                             ->required(),
 
@@ -75,7 +77,7 @@ class DokumenSopResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'AKTIF' => 'success',
                         'DALAM REVIEW' => 'warning',
-                        'ARCHIVED' => 'gray', // Warna abu-abu untuk arsip
+                        'ARCHIVED' => 'gray',
                         'DRAFT' => 'gray',
                         'REVISI' => 'danger',
                         'KADALUARSA' => 'danger',
@@ -97,11 +99,10 @@ class DokumenSopResource extends Resource
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     
-                    // 1. EDIT DATA (Standar)
-                    // Tables\Actions\EditAction::make(),
+                    // 1. EDIT DATA
+                    Tables\Actions\EditAction::make(), // Mengembalikan Edit Action standard
 
-                    // 2. SOLUSI 1: ARSIPKAN (SOFT ACTION)
-                    // Mengubah status jadi 'ARCHIVED' agar tidak muncul di list aktif tapi data aman
+                    // 2. ARSIPKAN (SOFT ACTION - STATUS ONLY)
                     Tables\Actions\Action::make('archive')
                         ->label('Arsipkan (Non-Aktifkan)')
                         ->icon('heroicon-o-archive-box')
@@ -118,19 +119,58 @@ class DokumenSopResource extends Resource
                                 ->success()
                                 ->send();
                         })
-                        // Tombol ini hilang jika statusnya sudah ARCHIVED
-                        ->visible(fn (DokumenSop $record) => $record->status !== 'ARCHIVED'),
+                        ->visible(fn (DokumenSop $record) => $record->status !== 'ARCHIVED' && !$record->trashed()),
 
-                    // 3. SOLUSI 3: HAPUS PERMANEN (HARD DELETE)
-                    // Menghapus data dari database. Hanya Super Admin yang punya akses ini.
+                    // 3. AKTIFKAN KEMBALI (UNARCHIVE)
+                    Tables\Actions\Action::make('unarchive')
+                        ->label('Aktifkan Kembali')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('Aktifkan Kembali Dokumen ini?')
+                        ->modalDescription('Dokumen akan dikembalikan ke status AKTIF.')
+                        ->modalSubmitActionLabel('Ya, Aktifkan')
+                        ->action(function (DokumenSop $record) {
+                            $record->update(['status' => 'AKTIF']);
+                            
+                            Notification::make()
+                                ->title('Dokumen berhasil diaktifkan kembali')
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn (DokumenSop $record) => $record->status === 'ARCHIVED' && !$record->trashed()),
+
+                    // 4. SOFT DELETE (HAPUS KE SAMPAH)
                     Tables\Actions\DeleteAction::make()
+                        ->label('Hapus (Sampah)')
+                        ->modalHeading('Pindahkan ke Sampah?')
+                        ->modalDescription('Data akan dipindahkan ke sampah (Soft Delete) dan bisa dipulihkan. File tidak akan dihapus.'),
+
+                    // 5. RESTORE (PULIHKAN DARI SAMPAH)
+                    Tables\Actions\RestoreAction::make()
+                        ->label('Pulihkan')
+                        ->after(function (DokumenSop $record) {
+                            // Log History
+                            RiwayatSop::create([
+                                'id_sop' => $record->id_sop,
+                                'id_user' => Auth::id(),
+                                'status_sop' => 'AKTIF', // Kembali aktif
+                                'catatan' => 'Dokumen dipulihkan dari sampah oleh Admin.',
+                                'dokumen_path' => $record->file_path
+                            ]);
+                        }),
+
+                    // 6. HARD DELETE (HAPUS PERMANEN)
+                    Tables\Actions\ForceDeleteAction::make()
                         ->label('Hapus Permanen')
-                        ->icon('heroicon-o-trash')
+                        ->icon('heroicon-o-x-circle')
                         ->modalHeading('Hapus Dokumen Secara Permanen?')
-                        ->modalDescription('PERINGATAN: Tindakan ini akan menghapus data dari database selamanya dan tidak bisa dikembalikan. Gunakan hanya untuk data sampah/salah input.')
+                        ->modalDescription('PERINGATAN: Tindakan ini akan menghapus data DAN FILE dari sistem selamanya. Data History juga akan ikut terhapus.')
                         ->before(function (DokumenSop $record) {
-                            // Opsional: Hapus file fisik jika diperlukan
-                            Storage::disk('public')->delete($record->file_path);
+                            // Hapus file fisik
+                            if ($record->file_path) {
+                                Storage::disk('public')->delete($record->file_path);
+                            }
                         }),
 
                 ])->icon('heroicon-m-ellipsis-vertical'),

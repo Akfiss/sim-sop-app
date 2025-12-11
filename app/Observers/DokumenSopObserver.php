@@ -54,11 +54,16 @@ class DokumenSopObserver
      */
     public function deleted(DokumenSop $dokumenSop): void
     {
+        // Don't log history if it's a force delete (record is gone)
+        if ($dokumenSop->isForceDeleting()) {
+            return;
+        }
+
         RiwayatSop::create([
             'id_sop' => $dokumenSop->id_sop,
             'id_user' => Auth::id() ?? $dokumenSop->updated_by,
             'status_sop' => 'ARCHIVED',
-            'catatan' => 'Dokumen dihapus (Soft Delete).',
+            'catatan' => 'Dokumen dipindahkan ke sampah (Soft Delete).',
             'dokumen_path' => $dokumenSop->file_path,
         ]);
     }

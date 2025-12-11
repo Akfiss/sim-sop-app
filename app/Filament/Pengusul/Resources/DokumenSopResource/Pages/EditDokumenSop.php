@@ -10,6 +10,22 @@ class EditDokumenSop extends EditRecord
 {
     protected static string $resource = DokumenSopResource::class;
 
+    public function mount($record): void
+    {
+        parent::mount($record);
+
+        // PROTEKSI: Jika status AKTIF atau DALAM REVIEW, tendang balik ke index
+        if (in_array($this->record->status, ['AKTIF', 'DALAM REVIEW'])) {
+            \Filament\Notifications\Notification::make()
+                ->warning()
+                ->title('Akses Ditolak')
+                ->body('Dokumen dengan status ' . $this->record->status . ' tidak dapat diedit.')
+                ->send();
+
+            $this->redirect($this->getResource()::getUrl('index'));
+        }
+    }
+
     // 1. HEADER ACTIONS (HAPUS)
     protected function getHeaderActions(): array
     {
@@ -37,7 +53,7 @@ class EditDokumenSop extends EditRecord
             // 2. TOMBOL KIRIM VERIFIKASI (Ubah status jadi DALAM REVIEW)
             // Hanya muncul jika statusnya DRAFT atau REVISI
             Actions\Action::make('submit_to_verifier')
-                ->label('Simpan & Kirim Verifikasi')
+                ->label('Simpan & Kirim')
                 ->color('primary') // Warna Biru Utama
                 ->icon('heroicon-o-paper-airplane')
                 ->visible(fn () => in_array($this->record->status, ['DRAFT', 'REVISI']))

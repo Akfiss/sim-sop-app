@@ -62,7 +62,7 @@ class PengusulPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Pengusul/Widgets'), for: 'App\\Filament\\Pengusul\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
-                //Widgets\FilamentInfoWidget::class,
+                // Widgets\FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

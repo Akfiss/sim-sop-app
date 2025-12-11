@@ -13,6 +13,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
@@ -46,12 +47,34 @@ class DokumenSopResource extends Resource
                             ->maxLength(255)
                             ->columnSpanFull(), // Lebar penuh
 
-                        // 2. Nomor SK (Boleh kosong jika belum ada SK / masih draft)
+                        // 2. Nomor SK (Duplicate Allowed in DRAFT)
                         Forms\Components\TextInput::make('nomor_sk')
                             ->label('Nomor SK')
                             ->required()
                             ->placeholder('Contoh: 001/SK/DIR/2025')
-                            ->maxLength(50),
+                            ->maxLength(50)
+                            // Custom Validation: Unique only if status != DRAFT
+                            ->rule(function (Forms\Get $get, ?DokumenSop $record) {
+                                return function (string $attribute, $value, \Closure $fail) use ($get, $record) {
+                                    $status = $get('status') ?? 'DRAFT'; // Default draft
+                                    
+                                    // Jika status DRAFT, boleh duplikat (skip unique check)
+                                    if ($status === 'DRAFT') return;
+
+                                    // Jika status BUKAN DRAFT (misal SUBMIT ke Review), cek unique
+                                    $query = DokumenSop::where('nomor_sk', $value)
+                                        ->where('status', '!=', 'DRAFT'); // Hanya bandingkan dengan yg bukan draft
+
+                                    // Ignore current record on Edit
+                                    if ($record) {
+                                        $query->where('id_sop', '!=', $record->id_sop);
+                                    }
+
+                                    if ($query->exists()) {
+                                        $fail('Nomor SK sudah digunakan oleh dokumen lain yang aktif/sedang direview.');
+                                    }
+                                };
+                            }),
 
                         // 3. Kategori
                         Forms\Components\Select::make('kategori_sop')
@@ -227,6 +250,12 @@ class DokumenSopResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            // Disable Row Click untuk status tertentu
+            ->recordUrl(fn (DokumenSop $record) => 
+                in_array($record->status, ['DRAFT', 'REVISI']) 
+                ? Pages\EditDokumenSop::getUrl(['record' => $record]) 
+                : null
+            )
             ->columns([
                 // 1. Judul SOP + Tanggal Upload
                 Tables\Columns\TextColumn::make('judul_sop')
@@ -334,29 +363,11 @@ class DokumenSopResource extends Resource
                         'SOP' => 'SOP',
                         'SOP_AP' => 'SOP AP',
                     ]),
+                Tables\Filters\TrashedFilter::make()
+                    ->native(false),
             ])
             ->actions([
-                // KITA BUNGKUS SEMUA ACTION DALAM SATU GRUP
-                Tables\Actions\ActionGroup::make([
-
-                    // 1. View Detail
-                    Tables\Actions\ViewAction::make()
-                        ->label('Detail')
-                        ->tooltip('Lihat Detail & Preview')
-                        ->modalHeading('Detail Dokumen SOP')
-                        ->modalWidth('4xl')
-                        ->icon('heroicon-o-eye')
-                        ->color('info'), // Warna biru muda
-
-                    // 2. Download PDF
-                    Tables\Actions\Action::make('download')
-                        ->label('Unduh')
-                        ->icon('heroicon-o-arrow-down-tray')
-                        ->color('success') // Warna hijau
-                        ->url(fn (DokumenSop $record) => asset('storage/' . $record->file_path))
-                        ->openUrlInNewTab(),
-
-                    // 3. Review Tahunan
+                // 3. Review Tahunan
                     Tables\Actions\Action::make('review_tahunan')
                         ->label('Perlu Review')
                         ->icon('heroicon-s-exclamation-triangle')
@@ -387,6 +398,25 @@ class DokumenSopResource extends Resource
                                 ->color('primary')
                                 ->url(fn (DokumenSop $record) => DokumenSopResource::getUrl('edit', ['record' => $record])),
                         ]),
+                // KITA BUNGKUS SEMUA ACTION DALAM SATU GRUP
+                Tables\Actions\ActionGroup::make([
+
+                    // 1. View Detail
+                    Tables\Actions\ViewAction::make()
+                        ->label('Detail')
+                        ->tooltip('Lihat Detail & Preview')
+                        ->modalHeading('Detail Dokumen SOP')
+                        ->modalWidth('4xl')
+                        ->icon('heroicon-o-eye')
+                        ->color('info'), // Warna biru muda
+
+                    // 2. Download PDF
+                    Tables\Actions\Action::make('download')
+                        ->label('Unduh')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success') // Warna hijau
+                        ->url(fn (DokumenSop $record) => asset('storage/' . $record->file_path))
+                        ->openUrlInNewTab(),
 
                     // 4. Edit Data
                     Tables\Actions\EditAction::make()
@@ -408,16 +438,43 @@ class DokumenSopResource extends Resource
 
                     // 5. Hapus Data
                     Tables\Actions\DeleteAction::make()
-                        ->label('Hapus')
+                        ->label('Hapus (Sampah)')
                         ->icon('heroicon-o-trash')
                         ->color('danger') // Warna merah
                         ->visible(fn (DokumenSop $record) => in_array($record->status, ['REVISI', 'DRAFT']))
+                        ->modalHeading('Pindahkan ke Sampah?')
+                        ->modalDescription('Data akan dipindahkan ke sampah (Soft Delete) dan bisa dipulihkan.')
                         ->successNotification(
                             Notification::make()
                                 ->success()
                                 ->title('Berhasil dihapus.')
-                                ->body('Data dokumen SOP telah dihapus dari sistem.')
+                                ->body('Data dokumen SOP telah dipindahkan ke sampah.')
                         )
+                        ->after(function (DokumenSop $record) {
+                            // Log History
+                            RiwayatSop::create([
+                                'id_sop' => $record->id_sop,
+                                'id_user' => Auth::id(),
+                                'status_sop' => 'ARCHIVED',
+                                'catatan' => 'Dokumen dipindahkan ke sampah (Soft Delete) oleh Pengusul.',
+                                'dokumen_path' => $record->file_path
+                            ]);
+                        }),
+
+                    // 6. Restore (Pulihkan)
+                    Tables\Actions\RestoreAction::make()
+                        ->label('Pulihkan')
+                        ->icon('heroicon-o-arrow-path')
+                        ->after(function (DokumenSop $record) {
+                            // Log History
+                            RiwayatSop::create([
+                                'id_sop' => $record->id_sop,
+                                'id_user' => Auth::id(),
+                                'status_sop' => $record->status, // Status kembali ke status sebelum delete
+                                'catatan' => 'Dokumen dipulihkan dari sampah oleh Pengusul.',
+                                'dokumen_path' => $record->file_path
+                            ]);
+                        }),
 
                 ])
                     ->icon('heroicon-m-ellipsis-vertical') // Ikon titik tiga
@@ -428,6 +485,7 @@ class DokumenSopResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\RestoreBulkAction::make(),
                 ]),
             ])
             ->paginated([10, 25, 50]);

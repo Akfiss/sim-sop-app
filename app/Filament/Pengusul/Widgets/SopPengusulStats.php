@@ -17,28 +17,32 @@ class SopPengusulStats extends BaseWidget
             // KARTU 1: TOTAL SOP
             Stat::make('Total Dokumen', DokumenSop::where('created_by', $userId)->count())
                 ->description('Seluruh dokumen Anda')
-                ->icon('heroicon-m-document-duplicate')
+                ->descriptionIcon('heroicon-m-arrow-trending-up')
+                ->chart([7, 2, 10, 3, 15, 4, 17])
                 ->color('primary')
-                ->url(route('filament.pengusul.resources.dokumen-sops.index')), // Reset Filter
+                ->url(route('filament.pengusul.resources.dokumen-sops.index')),
 
             // KARTU 2: DALAM REVIEW
             Stat::make('Dalam Review', DokumenSop::where('created_by', $userId)->where('status', 'DALAM REVIEW')->count())
                 ->description('Menunggu verifikasi')
-                ->icon('heroicon-m-clock')
+                ->descriptionIcon('heroicon-m-clock')
+                ->chart([2, 10, 3, 12, 1, 15, 10])
                 ->color('warning')
                 ->url(route('filament.pengusul.resources.dokumen-sops.index', ['tableFilters[status][value]' => 'DALAM REVIEW'])),
 
             // KARTU 3: PERLU REVISI
             Stat::make('Perlu Revisi', DokumenSop::where('created_by', $userId)->where('status', 'REVISI')->count())
                 ->description('Harap segera diperbaiki')
-                ->icon('heroicon-m-exclamation-triangle')
+                ->descriptionIcon('heroicon-m-exclamation-circle')
+                ->chart([15, 4, 10, 2, 12, 4, 12])
                 ->color('danger')
                 ->url(route('filament.pengusul.resources.dokumen-sops.index', ['tableFilters[status][value]' => 'REVISI'])),
 
             // KARTU 4: SOP AKTIF
             Stat::make('SOP Aktif', DokumenSop::where('created_by', $userId)->where('status', 'AKTIF')->count())
                 ->description('Dokumen sah & berlaku')
-                ->icon('heroicon-m-check-badge')
+                ->descriptionIcon('heroicon-m-check-badge')
+                ->chart([10, 15, 8, 14, 18, 12, 20])
                 ->color('success')
                 ->url(route('filament.pengusul.resources.dokumen-sops.index', ['tableFilters[status][value]' => 'AKTIF'])),
         ];

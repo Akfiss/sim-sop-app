@@ -7,81 +7,134 @@ use App\Models\UnitKerja;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class SopTestingSeeder extends Seeder
 {
     public function run(): void
     {
-        // Ambil User dan Unit Dummy (Pastikan table user/unit tidak kosong)
-        // Sebaiknya pakai user yang biasa Anda pakai login pengusul
-        $user = User::where('role', 'PENGUSUL')->first() ?? User::first();
-        $unit = UnitKerja::first();
+        // 1. Ambil User Pengusul 1, 2, 3
+        $users = User::whereIn('username', ['pengusul1', 'pengusul2', 'pengusul3'])->get();
+        $unit = UnitKerja::first(); // Default Unit
 
-        if (!$user || !$unit) {
-            $this->command->error('Harap isi data User dan Unit Kerja terlebih dahulu!');
+        if ($users->isEmpty() || !$unit) {
+            $this->command->error('User pengusul1, pengusul2, pengusul3 atau Unit Kerja tidak ditemukan.');
             return;
         }
 
-        $this->command->info('Membuat data testing SOP untuk User: ' . $user->username);
+        $titles = [
+            'Prosedur Penanganan Pasien Gawat Darurat',
+            'Standar Kebersihan Ruang Operasi',
+            'Alur Pendaftaran Pasien Rawat Jalan',
+            'Protokol Penggunaan Alat Pelindung Diri (APD)',
+            'Tata Cara Pengelolaan Limbah Medis B3',
+            'Prosedur Evakuasi Kebakaran Rumah Sakit',
+            'Standar Layanan Farmasi Klinis',
+            'Prosedur Sterilisasi Alat Medis',
+            'Panduan Penanganan Keluhan Pasien',
+            'Prosedur Pemeliharaan Fasilitas Gedung',
+            'Prosedur Penerimaan Pasien Baru',
+            'Standar Pelayanan Rekam Medis',
+            'Prosedur Keselamatan Kerja Laboratorium',
+            'Alur Rujukan Pasien BPJS',
+            'Protokol Isolasi Penyakit Menular',
+            'Prosedur Audit Internal Mutu',
+            'Tata Tertib Jam Berkunjung Pasien',
+            'Prosedur Pengadaan Obat dan Alkes',
+            'Standar Asuhan Keperawatan Intensif',
+            'Prosedur Pemulangan Pasien Rawat Inap',
+            'Protokol Penanganan Tumpahan Bahan Kimia',
+            'Standar Kalibrasi Alat Medis',
+            'Prosedur Pencatatan Insiden Keselamatan Pasien',
+            'Panduan Triase di UGD',
+            'Prosedur Pemasangan Infus',
+            'Standar Operasional Ambulans 24 Jam',
+            'Prosedur Penarikan Obat Kadaluarsa',
+            'Tata Cara Penggunaan APAR',
+            'Prosedur Stok Opname Farmasi',
+            'Panduan Edukasi Kesehatan Pasien Pulang'
+        ];
 
-        // SKENARIO 1: SOP BARU (DALAM REVIEW)
-        // Harapan: Tombol Edit/Delete NYALA. Warning Review MATI.
-        DokumenSop::create([
-            'id_sop' => 'TEST-001',
-            'judul_sop' => '[TEST] SOP Baru Upload',
-            'kategori_sop' => 'SOP',
-            'status' => 'DALAM REVIEW',
-            'created_by' => $user->id_user,
-            'id_unit_pemilik' => $unit->id_unit,
-            'file_path' => 'dummy.pdf', // File dummy
-        ]);
+        foreach ($users as $user) {
+            $this->command->info("Membuat 10 SOP untuk User: {$user->username}");
 
-        // SKENARIO 2: SOP AKTIF AMAN (Baru Disetujui Kemarin)
-        // Harapan: Tombol Edit/Delete MATI (Disabled). Warning Review MATI.
-        DokumenSop::create([
-            'id_sop' => 'TEST-002',
-            'judul_sop' => '[TEST] SOP Aktif (Masih Lama)',
-            'kategori_sop' => 'SOP',
-            'status' => 'AKTIF',
-            'tgl_pengesahan' => now()->subDays(1),
-            'tgl_berlaku' => now()->subDays(1),
-            'tgl_review_berikutnya' => now()->addYear(), // Masih 1 tahun lagi
-            'tgl_kadaluarsa' => now()->addYears(3),
-            'created_by' => $user->id_user,
-            'id_unit_pemilik' => $unit->id_unit,
-            'file_path' => 'dummy.pdf',
-        ]);
+            for ($i = 0; $i < 10; $i++) {
+                // Pilih Judul Random agar variatif
+                $title = $titles[array_rand($titles)] . ' - ' . strtoupper(uniqid());
 
-        // SKENARIO 3: SOP AKTIF (H-15 REVIEW TAHUNAN)
-        // Harapan: Tombol Edit NYALA. Icon Warning Review MUNCUL.
-        DokumenSop::create([
-            'id_sop' => 'TEST-003',
-            'judul_sop' => '[TEST] SOP Warning Review (H-15)',
-            'kategori_sop' => 'SOP',
-            'status' => 'AKTIF',
-            'tgl_pengesahan' => now()->subMonths(11), // Sudah 11 bulan
-            'tgl_berlaku' => now()->subMonths(11),
-            'tgl_review_berikutnya' => now()->addDays(15), // <--- 15 HARI LAGI REVIEW (Masuk H-30)
-            'tgl_kadaluarsa' => now()->addYears(2),
-            'created_by' => $user->id_user,
-            'id_unit_pemilik' => $unit->id_unit,
-            'file_path' => 'dummy.pdf',
-        ]);
+                // Tentukan Status Random
+                // Bobot: Lebih banyak AKTIF untuk tes expiry date
+                $statusList = ['DRAFT', 'DALAM REVIEW', 'REVISI', 'AKTIF', 'AKTIF', 'AKTIF', 'AKTIF']; 
+                $status = $statusList[array_rand($statusList)];
+                
+                $data = [
+                    'id_sop' => 'SOP-' . strtoupper(Str::random(6)), // 10 Char Limit
+                    'judul_sop' => $title,
+                    'kategori_sop' => rand(0, 1) ? 'SOP' : 'SOP_AP',
+                    'status' => $status,
+                    'id_unit_pemilik' => $unit->id_unit,
+                    'created_by' => $user->id_user,
+                    'file_path' => 'dummy.pdf', // Dummy path
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
 
-        // SKENARIO 4: SOP AKTIF (H-5 EXPIRED TOTAL)
-        // Harapan: Tombol Edit NYALA. Icon Warning Review MUNCUL. Notif Expired.
-        DokumenSop::create([
-            'id_sop' => 'TEST-004',
-            'judul_sop' => '[TEST] SOP Warning Expired (H-5)',
-            'kategori_sop' => 'SOP',
-            'status' => 'AKTIF',
-            'tgl_pengesahan' => now()->subYears(3)->addDays(5),
-            'tgl_berlaku' => now()->subYears(3)->addDays(5),
-            'tgl_review_berikutnya' => now()->subYear(), // Sudah lewat (tapi ketimpa expired)
-            'tgl_kadaluarsa' => now()->addDays(5), // <--- 5 HARI LAGI MATI TOTAL
-            'created_by' => $user->id_user,
-            'id_unit_pemilik' => $unit->id_unit,
-            'file_path' => 'dummy.pdf',
-        ]);
+                // Setting Tanggal Khusus untuk Status AKTIF
+                if ($status === 'AKTIF') {
+                    // Skenario Tanggal (Random Dist)
+                    $scenario = rand(1, 4);
+
+                    // Default (Aman)
+                    $tglPengesahan = now()->subMonth();
+                    $tglReview = now()->addMonths(11);
+                    $tglKadaluarsa = now()->addYears(2);
+
+                    switch ($scenario) {
+                        case 1: // Mendekati Review Tahunan (H-30 s/d Hari H)
+                            $daysUntilReview = rand(0, 30);
+                            $tglPengesahan = now()->subYear()->addDays($daysUntilReview); // Setahun lalu kurang dikit
+                            $tglReview = now()->addDays($daysUntilReview);
+                            $tglKadaluarsa = now()->addYears(2);
+                            $data['judul_sop'] .= ' [WARNING REVIEW H-' . $daysUntilReview . ']';
+                            break;
+
+                        case 2: // Mendekati Kadaluarsa (H-30 s/d Hari H)
+                            $daysUntilExpired = rand(0, 30);
+                            $tglPengesahan = now()->subYears(3)->addDays($daysUntilExpired);
+                            $tglReview = now()->subYear(); // Review udah lewat
+                            $tglKadaluarsa = now()->addDays($daysUntilExpired);
+                            $data['judul_sop'] .= ' [WARNING EXPIRED H-' . $daysUntilExpired . ']';
+                            break;
+
+                        case 3: // Sudah Kadaluarsa / Review Lewat (Expired)
+                            $daysPast = rand(1, 100);
+                            $tglPengesahan = now()->subYears(3)->subDays($daysPast);
+                            $tglReview = now()->subYear()->subDays($daysPast);
+                            $tglKadaluarsa = now()->subDays($daysPast);
+                            $data['judul_sop'] .= ' [EXPIRED]';
+                            // Status bisa tetap AKTIF di database tapi logic sistem anggap Expired, 
+                            // atau kita set manual KADALUARSA jika mau strict.
+                            // User minta: "approach annual review... approach expiration... passed active period"
+                            // Kita biarkan status AKTIF biar keliatan merahnya di tabel (jika ada logic warna expired)
+                            // Atau manual set status KADALUARSA?
+                            // Biasanya sistem scheduler yang ubah ke KADALUARSA. Kita biarkan AKTIF tapi tanggal lewat.
+                            break;
+
+                        case 4: // Aman (Normal)
+                            // Default values apply
+                            break;
+                    }
+
+                    $data['tgl_pengesahan'] = $tglPengesahan;
+                    $data['tgl_berlaku'] = $tglPengesahan;
+                    $data['tgl_review_berikutnya'] = $tglReview;
+                    $data['tgl_kadaluarsa'] = $tglKadaluarsa;
+                }
+
+                DokumenSop::create($data);
+            }
+        }
+        
+        $this->command->info('Selesai membuat data dummy.');
     }
 }

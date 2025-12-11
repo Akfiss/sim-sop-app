@@ -49,7 +49,7 @@
                             'bg-gray-500' => in_array($riwayat->status_sop, ['KADALUARSA', 'ARCHIVED']),
                         ])>
                             @if($index === 0)
-                                <x-heroicon-s-check class="w-3 h-3 text-white" />
+                                <x-heroicon-s-check class="w-3 h-3 text-black" />
                             @else
                                 <span class="w-2 h-2 bg-white rounded-full"></span>
                             @endif

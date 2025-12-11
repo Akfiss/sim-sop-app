@@ -35,8 +35,23 @@ class DokumenSopResource extends Resource
         $userDirektorat = Auth::user()->id_direktorat;
 
         return parent::getEloquentQuery()
-            ->whereHas('unitPemilik', function (Builder $query) use ($userDirektorat) {
-                $query->where('id_direktorat', $userDirektorat);
+            ->where(function (Builder $query) use ($userDirektorat) {
+                // 1. SOP yang Dimiliki oleh Unit di bawah Direktorat user
+                $query->whereHas('unitPemilik', function (Builder $q) use ($userDirektorat) {
+                    $q->where('id_direktorat', $userDirektorat);
+                })
+                // 2. ATAU SOP Kategori 'SOP_AP' yang terkait dengan Unit di bawah Direktorat user
+                ->orWhere(function (Builder $q) use ($userDirektorat) {
+                     $q->where('kategori_sop', 'SOP_AP')
+                       ->where(function (Builder $subQ) use ($userDirektorat) {
+                           // 2a. Berlaku untuk SEMUA Unit
+                           $subQ->where('is_all_units', true)
+                           // 2b. Atau Terkait secara spesifik dengan unit di bawah direktorat
+                           ->orWhereHas('unitTerkait', function (Builder $relQ) use ($userDirektorat) {
+                               $relQ->where('id_direktorat', $userDirektorat);
+                           });
+                       });
+                });
             });
     }
 
