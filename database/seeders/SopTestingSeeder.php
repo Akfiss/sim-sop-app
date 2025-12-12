@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\DokumenSop;
-use App\Models\UnitKerja;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -13,12 +12,14 @@ class SopTestingSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Ambil User Pengusul 1, 2, 3
-        $users = User::whereIn('username', ['pengusul1', 'pengusul2', 'pengusul3'])->get();
-        $unit = UnitKerja::first(); // Default Unit
+        // 1. Ambil User Pengusul 1, 2, 3 yang SUDAH memiliki relasi Unit
+        // Kita gunakan 'with' untuk eager load relasi units agar efisien
+        $users = User::whereIn('username', ['pengusul1', 'pengusul2', 'pengusul3'])
+            ->with('units') 
+            ->get();
 
-        if ($users->isEmpty() || !$unit) {
-            $this->command->error('User pengusul1, pengusul2, pengusul3 atau Unit Kerja tidak ditemukan.');
+        if ($users->isEmpty()) {
+            $this->command->error('User pengusul1, pengusul2, pengusul3 tidak ditemukan. Pastikan MasterSeeder sudah dijalankan.');
             return;
         }
 
@@ -56,30 +57,39 @@ class SopTestingSeeder extends Seeder
         ];
 
         foreach ($users as $user) {
-            $this->command->info("Membuat 10 SOP untuk User: {$user->username}");
+            // Ambil Unit Kerja ASLI milik user ini
+            // Asumsi user pengusul pasti punya unit (di set di MasterSeeder)
+            $unitMilikUser = $user->units->first();
+
+            if (!$unitMilikUser) {
+                $this->command->warn("User {$user->username} tidak memiliki unit kerja. Lewati pembuatan SOP.");
+                continue;
+            }
+
+            $this->command->info("Membuat 10 SOP untuk User: {$user->username} (Unit: {$unitMilikUser->nama_unit})");
 
             for ($i = 0; $i < 10; $i++) {
                 // Pilih Judul Random agar variatif
-                $title = $titles[array_rand($titles)] . ' - ' . strtoupper(uniqid());
+                $title = $titles[array_rand($titles)];
 
                 // Tentukan Status Random
-                // Bobot: Lebih banyak AKTIF untuk tes expiry date
-                $statusList = ['DRAFT', 'DALAM REVIEW', 'REVISI', 'AKTIF', 'AKTIF', 'AKTIF', 'AKTIF']; 
+                // Bobot: Lebih banyak AKTIF untuk tes dashboard direksi
+                $statusList = ['DRAFT', 'DALAM REVIEW', 'REVISI', 'AKTIF', 'AKTIF', 'AKTIF', 'AKTIF', 'KADALUARSA']; 
                 $status = $statusList[array_rand($statusList)];
                 
                 $data = [
-                    'id_sop' => 'SOP-' . strtoupper(Str::random(6)), // 10 Char Limit
-                    'judul_sop' => $title,
+                    'id_sop' => 'SOP-' . strtoupper(Str::random(6)),
+                    'judul_sop' => $title, // Judul dasar dulu
                     'kategori_sop' => rand(0, 1) ? 'SOP' : 'SOP_AP',
                     'status' => $status,
-                    'id_unit_pemilik' => $unit->id_unit,
+                    'id_unit_pemilik' => $unitMilikUser->id_unit, // PENTING: Gunakan ID Unit milik user
                     'created_by' => $user->id_user,
-                    'file_path' => 'dummy.pdf', // Dummy path
+                    'file_path' => 'dummy.pdf',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
 
-                // Setting Tanggal Khusus untuk Status AKTIF
+                // Setting Tanggal Khusus untuk Status AKTIF (agar muncul di dashboard direksi)
                 if ($status === 'AKTIF') {
                     // Skenario Tanggal (Random Dist)
                     $scenario = rand(1, 4);
@@ -90,38 +100,35 @@ class SopTestingSeeder extends Seeder
                     $tglKadaluarsa = now()->addYears(2);
 
                     switch ($scenario) {
-                        case 1: // Mendekati Review Tahunan (H-30 s/d Hari H)
+                        case 1: // WARNING REVIEW (H-30)
                             $daysUntilReview = rand(0, 30);
-                            $tglPengesahan = now()->subYear()->addDays($daysUntilReview); // Setahun lalu kurang dikit
+                            $tglPengesahan = now()->subYear()->addDays($daysUntilReview); 
                             $tglReview = now()->addDays($daysUntilReview);
                             $tglKadaluarsa = now()->addYears(2);
-                            $data['judul_sop'] .= ' [WARNING REVIEW H-' . $daysUntilReview . ']';
+                            $data['judul_sop'] .= ' [WARNING REVIEW]';
                             break;
 
-                        case 2: // Mendekati Kadaluarsa (H-30 s/d Hari H)
+                        case 2: // WARNING EXPIRED (H-30)
                             $daysUntilExpired = rand(0, 30);
                             $tglPengesahan = now()->subYears(3)->addDays($daysUntilExpired);
-                            $tglReview = now()->subYear(); // Review udah lewat
+                            $tglReview = now()->subYear(); 
                             $tglKadaluarsa = now()->addDays($daysUntilExpired);
-                            $data['judul_sop'] .= ' [WARNING EXPIRED H-' . $daysUntilExpired . ']';
+                            $data['judul_sop'] .= ' [WARNING EXPIRED]';
                             break;
 
-                        case 3: // Sudah Kadaluarsa / Review Lewat (Expired)
+                        case 3: // EXPIRED (Lewat Tanggal)
                             $daysPast = rand(1, 100);
                             $tglPengesahan = now()->subYears(3)->subDays($daysPast);
                             $tglReview = now()->subYear()->subDays($daysPast);
                             $tglKadaluarsa = now()->subDays($daysPast);
                             $data['judul_sop'] .= ' [EXPIRED]';
-                            // Status bisa tetap AKTIF di database tapi logic sistem anggap Expired, 
-                            // atau kita set manual KADALUARSA jika mau strict.
-                            // User minta: "approach annual review... approach expiration... passed active period"
-                            // Kita biarkan status AKTIF biar keliatan merahnya di tabel (jika ada logic warna expired)
-                            // Atau manual set status KADALUARSA?
-                            // Biasanya sistem scheduler yang ubah ke KADALUARSA. Kita biarkan AKTIF tapi tanggal lewat.
+                            
+                            // Opsional: Ubah status jadi KADALUARSA jika ingin strict
+                            // $data['status'] = 'KADALUARSA'; 
                             break;
 
                         case 4: // Aman (Normal)
-                            // Default values apply
+                            $data['judul_sop'] .= ' [AMAN]';
                             break;
                     }
 
@@ -135,6 +142,6 @@ class SopTestingSeeder extends Seeder
             }
         }
         
-        $this->command->info('Selesai membuat data dummy.');
+        $this->command->info('Selesai membuat data dummy SOP yang terhubung dengan Unit & Direktorat.');
     }
 }
