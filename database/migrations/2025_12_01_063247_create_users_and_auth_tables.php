@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         // 1. Tabel Password Resets
@@ -20,14 +17,17 @@ return new class extends Migration
 
         // 2. Tabel Users
         Schema::create('tb_users', function (Blueprint $table) {
-            $table->bigIncrements('id_user'); // Otomatis INT, AI, Primary Key
+            $table->bigIncrements('id_user');
             $table->string('username', 50)->unique();
             $table->string('email', 100)->unique();
             $table->string('password', 255);
             $table->string('nama_lengkap', 255);
             $table->enum('role', ['PENGUSUL', 'VERIFIKATOR', 'DIREKSI', 'SUPER ADMIN']);
             $table->boolean('is_active')->default(true);
-            $table->char('id_direktorat', 5)->nullable(); // Nullable untuk non-direksi
+            $table->char('id_direktorat', 5)->nullable();
+            
+            // Langsung tambahkan remember_token di sini
+            $table->rememberToken(); 
 
             // Foreign Key
             $table->foreign('id_direktorat')
@@ -37,20 +37,15 @@ return new class extends Migration
 
         // 3. Tabel Unit User (Bridge)
         Schema::create('tb_unit_user', function (Blueprint $table) {
-            $table->integer('id_unit_user')->autoIncrement(); // Primary Key AI
-            // $table->char('id_user', length: 5);
+            $table->integer('id_unit_user')->autoIncrement();
             $table->unsignedBigInteger('id_user');
             $table->char('id_unit', 10);
 
-            // Foreign Keys
             $table->foreign('id_user')->references('id_user')->on('tb_users')->onDelete('cascade');
             $table->foreign('id_unit')->references('id_unit')->on('tb_unit_kerja')->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('tb_unit_user');
