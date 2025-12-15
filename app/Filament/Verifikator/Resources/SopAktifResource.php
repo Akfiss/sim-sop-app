@@ -1,11 +1,9 @@
 <?php
 
-namespace App\Filament\Pengusul\Resources;
+namespace App\Filament\Verifikator\Resources;
 
-use App\Filament\Pengusul\Resources\SopAktifResource\Pages;
+use App\Filament\Verifikator\Resources\SopAktifResource\Pages;
 use App\Models\DokumenSop;
-use Carbon\Carbon;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
@@ -13,26 +11,26 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+
 
 class SopAktifResource extends Resource
 {
     protected static ?string $model = DokumenSop::class;
 
-    // --- KONFIGURASI MENU ---
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'SOP Aktif';
     protected static ?string $pluralModelLabel = 'SOP Aktif';
-    protected static ?string $navigationGroup = 'Daftar Lengkap SOP'; // Satu grup dengan yang tadi
-    protected static ?int $navigationSort = 1; // Urutan ke-1 (di atas Pengajuan SOP)
+    protected static ?string $navigationGroup = 'Manajemen SOP';
+    protected static ?int $navigationSort = 0; // Paling atas (0 < 1)
 
-    // --- LOGIC FILTER DATA (INTI PERMINTAAN ANDA) ---
+    // Filter Query: Hanya Status AKTIF
     public static function getEloquentQuery(): Builder
     {
         $user = Auth::user();
         // Asumsi user punya relasi 'units' dan kita ambil unit pertamanya
         $userUnitId = $user->units->first()?->id_unit;
-
         return parent::getEloquentQuery()
             // 1. Pastikan HANYA status AKTIF
             ->where('status', 'AKTIF')
@@ -54,15 +52,14 @@ class SopAktifResource extends Resource
                           ->orWhere('is_all_units', true);
                       });
                 });
-            });
+            })
+            ->withoutGlobalScopes();
     }
 
-    // --- FORM (READ ONLY / VIEW SAJA) ---
-    // Kita gunakan form yang sama dengan DokumenSopResource tapi didisable semua atau minimal view
-    // Agar lebih cepat, kita return form kosong atau copy schema view action
+    // Form kosong karena hanya View Only
     public static function form(Form $form): Form
     {
-        return $form->schema([]); // Tidak butuh form edit karena ini view only
+        return $form->schema([]);
     }
 
     // --- INFOLIST (POP-UP DETAIL & PREVIEW SOP) ---
@@ -152,23 +149,29 @@ class SopAktifResource extends Resource
             ]);
     }
 
-    // --- TABEL ---
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null) // Matikan klik baris
             ->columns([
+                // 1. Judul
                 Tables\Columns\TextColumn::make('judul_sop')
-                    ->label('Judul SOP')
+                    ->label('Judul Dokumen')
                     ->searchable()
+                    ->sortable()
                     ->weight('bold')
+                    ->limit(50)
                     ->description(fn (DokumenSop $record) => $record->nomor_sk ?? '-'),
 
+                // 2. Unit Pemilik
                 Tables\Columns\TextColumn::make('unitPemilik.nama_unit')
                     ->label('Unit Pemilik')
                     ->badge()
-                    ->color('gray')
-                    ->searchable(),
+                    ->color('info')
+                    ->searchable()
+                    ->sortable(),
 
+                // 3. Kategori
                 Tables\Columns\TextColumn::make('kategori_sop')
                     ->label('Kategori')
                     ->badge()
@@ -176,28 +179,63 @@ class SopAktifResource extends Resource
                         'info' => 'SOP',
                         'warning' => 'SOP_AP',
                     ]),
+                
+                // 4. Unit Terkait (Logic All Units)
+                Tables\Columns\TextColumn::make('unitTerkait.nama_unit')
+                    ->label('Unit Terkait')
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    ->limitList(2)
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->placeholder(fn (DokumenSop $record) => 
+                        $record->is_all_units ? 'SELURUH UNIT' : '-'
+                    )
+                    ->color(fn (DokumenSop $record) => $record->is_all_units ? 'success' : null)
+                    ->weight(fn (DokumenSop $record) => $record->is_all_units ? 'bold' : null),
 
+                // 5. Tanggal Berlaku
                 Tables\Columns\TextColumn::make('tgl_berlaku')
                     ->label('Tgl Berlaku')
                     ->date('d M Y')
                     ->sortable(),
 
+                // 6. Tanggal Kadaluarsa (Indikator Warna)
                 Tables\Columns\TextColumn::make('tgl_kadaluarsa')
                     ->label('Kadaluarsa')
                     ->date('d M Y')
-                    ->color('danger')
-                    ->sortable(),
+                    ->sortable()
+                    ->color(fn ($state) => $state && Carbon::parse($state)->isPast() ? 'danger' : 'success')
+                    ->description(function (DokumenSop $record) {
+                        if ($record->tgl_kadaluarsa && now()->diffInDays($record->tgl_kadaluarsa, false) <= 30) {
+                            return '🚨 Segera Habis';
+                        }
+                        return null;
+                    }),
+            ])
+            ->defaultSort('tgl_berlaku', 'desc')
+            ->filters([
+                // Filter Unit
+                Tables\Filters\SelectFilter::make('id_unit_pemilik')
+                    ->relationship('unitPemilik', 'nama_unit')
+                    ->label('Filter Unit')
+                    ->searchable()
+                    ->preload(),
+                
+                // Filter Kategori
+                Tables\Filters\SelectFilter::make('kategori_sop')
+                    ->options([
+                        'SOP' => 'SOP Internal',
+                        'SOP_AP' => 'SOP Antar Profesi',
+                    ]),
             ])
             ->actions([
-                // HANYA TOMBOL LIHAT & DOWNLOAD
+                // Action Group: Lihat & Download
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
-                        ->label('Lihat Detail')
-                        ->modalHeading('Detail SOP')
-                        // Gunakan Infolist dari Resource utama jika ingin tampilan sama,
-                        // atau biarkan default filament view
-                        ->icon('heroicon-o-eye')
-                        ->color('info'),
+                        ->label('Detail')
+                        ->modalHeading('Preview Detail SOP')
+                        ->color('info')
+                        ->icon('heroicon-o-eye'),
 
                     Tables\Actions\Action::make('download')
                         ->label('Unduh PDF')
@@ -207,10 +245,14 @@ class SopAktifResource extends Resource
                         ->openUrlInNewTab(),
                 ])
                 ->icon('heroicon-m-ellipsis-vertical')
-                ->tooltip('Menu')
+                ->color('primary')
             ])
-            ->defaultSort('created_at', 'desc')
             ->paginated([10, 25, 50]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [];
     }
 
     public static function getPages(): array

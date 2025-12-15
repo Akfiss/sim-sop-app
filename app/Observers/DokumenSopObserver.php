@@ -10,61 +10,43 @@ class DokumenSopObserver
 {
     /**
      * Handle the DokumenSop "created" event.
+     * Logic ini tetap di sini karena saat Create, kita tidak butuh perbandingan data lama vs baru.
      */
     public function created(DokumenSop $dokumenSop): void
     {
-        RiwayatSop::create([
-            'id_sop' => $dokumenSop->id_sop,
-            'id_user' => Auth::id() ?? $dokumenSop->created_by,
-            'status_sop' => $dokumenSop->status,
-            'catatan' => 'Dokumen SOP baru berhasil dibuat.',
-            'dokumen_path' => $dokumenSop->file_path,
-        ]);
-    }
+        // Cek agar tidak error jika dijalankan via seeder (Auth null)
+        $userId = Auth::id() ?? $dokumenSop->created_by;
 
-    /**
-     * Handle the DokumenSop "updated" event.
-     */
-    public function updated(DokumenSop $dokumenSop): void
-    {
-        if ($dokumenSop->isDirty('status') || $dokumenSop->isDirty('file_path')) {
-            
-            $catatan = 'Update Data SOP.';
-            if ($dokumenSop->isDirty('status')) {
-                $catatan = 'Status berubah menjadi ' . $dokumenSop->status;
-
-                // Jika status REVISI dan ada catatan revisi dari verifikator
-                if ($dokumenSop->status === 'REVISI' && !empty($dokumenSop->catatan_revisi)) {
-                    $catatan .= '. Pesan Verifikator: ' . $dokumenSop->catatan_revisi;
-                }
-            }
-
+        if ($userId) {
             RiwayatSop::create([
                 'id_sop' => $dokumenSop->id_sop,
-                'id_user' => Auth::id() ?? $dokumenSop->updated_by ?? $dokumenSop->created_by,
+                'id_user' => $userId,
                 'status_sop' => $dokumenSop->status,
-                'catatan' => $catatan,
+                'catatan' => 'Dokumen SOP baru berhasil diunggah/dibuat.',
                 'dokumen_path' => $dokumenSop->file_path,
             ]);
         }
     }
 
     /**
+     * Handle the DokumenSop "updated" event.
+     * KOSONGKAN method ini.
+     * Alasannya: Kita sudah menangani log update yang lebih detail ("Field A berubah jadi B")
+     * di file app/Filament/Verifikator/Resources/DokumenSopResource/Pages/EditDokumenSop.php
+     */
+    public function updated(DokumenSop $dokumenSop): void
+    {
+        // Biarkan kosong agar tidak double record
+    }
+
+    /**
      * Handle the DokumenSop "deleted" event.
+     * KOSONGKAN method ini.
+     * Alasannya: Kita sudah menangani log soft delete di hook ->after() 
+     * pada file app/Filament/Verifikator/Resources/DokumenSopResource.php
      */
     public function deleted(DokumenSop $dokumenSop): void
     {
-        // Don't log history if it's a force delete (record is gone)
-        if ($dokumenSop->isForceDeleting()) {
-            return;
-        }
-
-        RiwayatSop::create([
-            'id_sop' => $dokumenSop->id_sop,
-            'id_user' => Auth::id() ?? $dokumenSop->updated_by,
-            'status_sop' => 'ARCHIVED',
-            'catatan' => 'Dokumen dipindahkan ke sampah (Soft Delete).',
-            'dokumen_path' => $dokumenSop->file_path,
-        ]);
+        // Biarkan kosong agar tidak double record
     }
 }

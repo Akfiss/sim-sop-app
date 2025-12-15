@@ -8,17 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-       // 1. Tabel Dokumen SOP
+        // 1. Tabel Dokumen SOP
         Schema::create('tb_dokumen_sop', function (Blueprint $table) {
             $table->char('id_sop', 10)->primary();
             
-            // REVISI: Hapus ->unique() agar sesuai dengan file migrasi 2025_12_11
+            // Nomor SK tidak unique karena mungkin draft awal belum ada nomor
             $table->string('nomor_sk', 50)->nullable(); 
             
             $table->string('judul_sop', 255);
             $table->enum('kategori_sop', ['SOP', 'SOP_AP'])->default('SOP');
             
-            // Kolom ini sudah benar (sesuai update sebelumnya)
+            // Kolom ini tetap dipertahankan
             $table->boolean('is_all_units')->default(false); 
             $table->string('file_path', 255)->nullable();
 
@@ -27,13 +27,13 @@ return new class extends Migration
             $table->date('tgl_review_berikutnya')->nullable();
             $table->date('tgl_kadaluarsa')->nullable();
 
-            // Enum Status (Sudah Update)
-            $table->enum('status', [
-                'DRAFT', 'DALAM REVIEW', 'REVISI', 'AKTIF', 'KADALUARSA', 'ARCHIVED'
-            ])->default('DALAM REVIEW');
+            // --- PERUBAHAN UTAMA DI SINI ---
+            // Status hanya AKTIF dan KADALUARSA
+            // Default langsung AKTIF saat diupload
+            $table->enum('status', ['AKTIF', 'KADALUARSA'])->default('AKTIF');
 
             // Foreign Keys
-            $table->char('id_unit_pemilik', 10);
+            $table->char('id_unit_pemilik', 10); // Pastikan panjangnya sama dengan tb_unit_kerja (10 char)
             $table->unsignedBigInteger('created_by');
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->unsignedBigInteger('deleted_by')->nullable();
@@ -48,7 +48,7 @@ return new class extends Migration
             $table->foreign('deleted_by')->references('id_user')->on('tb_users');
         });
 
-        // 2. Tabel SOP Unit Terkait (Bridge)
+        // 2. Tabel SOP Unit Terkait (Tetap Sama)
         Schema::create('tb_sop_unit_terkait', function (Blueprint $table) {
             $table->integer('id')->autoIncrement();
             $table->char('id_sop', 10);
@@ -58,13 +58,14 @@ return new class extends Migration
             $table->foreign('id_unit')->references('id_unit')->on('tb_unit_kerja')->onDelete('cascade');
         });
 
-        // 3. Tabel Riwayat SOP
+        // 3. Tabel Riwayat SOP (Sesuaikan Enum)
         Schema::create('tb_riwayat_sop', function (Blueprint $table) {
             $table->integer('id_riwayat')->autoIncrement();
             $table->text('catatan')->nullable();
-            $table->enum('status_sop', [
-                'DRAFT', 'DALAM REVIEW', 'REVISI', 'AKTIF', 'KADALUARSA', 'ARCHIVED'
-            ]);
+            
+            // Enum status di riwayat juga disesuaikan
+            $table->enum('status_sop', ['AKTIF', 'KADALUARSA']);
+            
             $table->string('dokumen_path', 255)->nullable();
             $table->timestamps(); 
 
@@ -75,7 +76,7 @@ return new class extends Migration
             $table->foreign('id_sop')->references('id_sop')->on('tb_dokumen_sop')->onDelete('cascade');
         });
 
-        // 4. Tabel Notifikasi
+        // 4. Tabel Notifikasi (Tetap Sama)
         Schema::create('tb_notifikasi', function (Blueprint $table) {
             $table->integer('id_notifikasi')->autoIncrement();
             $table->string('judul', 100);

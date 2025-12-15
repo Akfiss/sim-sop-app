@@ -10,7 +10,13 @@ use Illuminate\Database\Eloquent\Builder;
 class SopStatusChart extends ChartWidget
 {
     protected static ?string $heading = 'Distribusi Status SOP';
-    protected static ?int $sort = 2; // Urutan tampilan
+    protected static ?int $sort = 2;
+    
+    // Tetap full width agar rapi di grid
+    protected int | string | array $columnSpan = 'full'; 
+
+    // --- REVISI: BATASI TINGGI GRAFIK ---
+    protected static ?string $maxHeight = '300px'; // Ukuran compact yang enak dilihat
 
     protected function getData(): array
     {
@@ -26,44 +32,49 @@ class SopStatusChart extends ChartWidget
             ->pluck('total', 'status')
             ->toArray();
 
-        // Mapping Warna Transparan (RGBA)
-        $colors = [
-            'AKTIF'        => 'rgba(16, 185, 129, 0.5)',  // Hijau (Success)
-            'DALAM REVIEW' => 'rgba(245, 158, 11, 0.5)',  // Kuning (Warning)
-            'KADALUARSA'   => 'rgba(107, 114, 128, 0.5)', // Abu (Gray)
-            'REVISI'       => 'rgba(239, 68, 68, 0.5)',   // Merah (Danger)
-        ];
-
-        // Mapping Warna Border (Solid)
-        $borders = [
-            'AKTIF'        => 'rgb(16, 185, 129)',
-            'DALAM REVIEW' => 'rgb(245, 158, 11)',
-            'KADALUARSA'   => 'rgb(107, 114, 128)',
-            'REVISI'       => 'rgb(239, 68, 68)',
-        ];
-
-        // Cocokkan data dengan warna
-        $backgrounds = [];
-        $borderColors = [];
-        foreach ($data as $status => $count) {
-            $backgrounds[] = $colors[$status] ?? 'rgba(200, 200, 200, 0.5)';
-            $borderColors[] = $borders[$status] ?? 'rgb(200, 200, 200)';
+        // Mapping Warna & Label
+        // Kita sesuaikan urutan warna agar match dengan key $data
+        $labels = array_keys($data);
+        $values = array_values($data);
+        
+        $colors = [];
+        foreach ($labels as $status) {
+            $colors[] = match ($status) {
+                'AKTIF' => '#10b981', // Hijau
+                'KADALUARSA' => '#ef4444', // Merah
+                default => '#6b7280', // Abu
+            };
         }
 
         return [
             'datasets' => [
                 [
                     'label' => 'Jumlah SOP',
-                    'data' => array_values($data),
-                    'backgroundColor' => ['#f59e0b', '#ef4444', '#10b981', '#6b7280'], // Kuning, Merah, Hijau, Abu
+                    'data' => $values,
+                    'backgroundColor' => $colors,
+                    'hoverOffset' => 4,
                 ],
             ],
-            'labels' => array_keys($data),
+            'labels' => $labels,
+        ];
+    }
+
+    // OPSI: Menampilkan legenda di samping agar lingkaran tidak tertekan
+    protected function getOptions(): array
+    {
+        return [
+            'plugins' => [
+                'legend' => [
+                    'position' => 'right', // Posisi legenda di kanan
+                    'align' => 'center',
+                ],
+            ],
+            'maintainAspectRatio' => false, // Agar mengikuti maxHeight
         ];
     }
 
     protected function getType(): string
     {
-        return 'polarArea';
+        return 'doughnut';
     }
 }

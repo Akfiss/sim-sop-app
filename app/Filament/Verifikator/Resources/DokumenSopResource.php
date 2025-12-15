@@ -4,283 +4,467 @@ namespace App\Filament\Verifikator\Resources;
 
 use App\Filament\Verifikator\Resources\DokumenSopResource\Pages;
 use App\Models\DokumenSop;
-use App\Models\Notifikasi;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Components\Tab;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Notifications\Notification as FilamentNotification;
+use Illuminate\Support\Facades\Auth;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
+use App\Models\Notifikasi; // Pastikan Model Notifikasi ada
+use App\Models\RiwayatSop; // Pastikan Model Riwayat ada (jika mau catat log)
 use Carbon\Carbon;
-use Illuminate\Support\HtmlString;
 
 class DokumenSopResource extends Resource
 {
     protected static ?string $model = DokumenSop::class;
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    // --- UBAH BAGIAN INI ---
-    protected static ?string $navigationLabel = 'Verifikasi SOP'; // Nama Menu di Sidebar
-    protected static ?string $pluralModelLabel = 'Verifikasi SOP'; // Judul di Halaman List
-    protected static ?string $modelLabel = 'Dokumen SOP';
-    
-    // Grouping
-    protected static ?string $navigationGroup = 'Pengelolaan SOP'; // Nama Grup
+
+    protected static ?string $navigationIcon = 'heroicon-o-document-check';
+    protected static ?string $navigationLabel = 'Verifikasi SOP';
+    protected static ?string $pluralModelLabel = 'Manajemen SOP';
+    protected static ?string $navigationGroup = 'Manajemen SOP';
     protected static ?int $navigationSort = 1;
-    // -----------------------
 
-    public static function canCreate(): bool { return false; }
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Informasi Dokumen')
+                    ->description('Isi detail identitas SOP di sini.')
+                    ->schema([
+                        // 1. Pilih Unit Pemilik (PENTING BAGI VERIFIKATOR)
+                        Forms\Components\Select::make('id_unit_pemilik')
+                            ->label('Unit Pemilik SOP')
+                            ->relationship('unitPemilik', 'nama_unit')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->columnSpanFull(),
+                        // 2. Judul SOP
+                        Forms\Components\TextInput::make('judul_sop')
+                            ->label('Judul SOP')
+                            ->required()
+                            ->maxLength(255)
+                            ->columnSpanFull(),
+                        // 3. Nomor SK
+                        Forms\Components\TextInput::make('nomor_sk')
+                            ->label('Nomor SK')
+                            ->required()
+                            ->placeholder('Contoh: 001/SK/DIR/2025')
+                            ->maxLength(50),
+                        // 4. Kategori SOP
+                        Forms\Components\Select::make('kategori_sop')
+                            ->options([
+                                'SOP' => 'SOP Internal',
+                                'SOP_AP' => 'SOP AP Unit Terkait',
+                            ])
+                            ->placeholder('Pilih Kategori...')
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('unitTerkait', [])),
 
+                        // 5. Toggle All Units (Hanya jika SOP AP)
+                        Forms\Components\Toggle::make('is_all_units')
+                            ->label('Berlaku untuk SELURUH Unit?')
+                            ->visible(fn (Forms\Get $get) => $get('kategori_sop') === 'SOP_AP')
+                            ->live()
+                            ->onColor('success')
+                            ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                if ($state) {
+                                    $set('unitTerkait', []);
+                                }
+                            }),
+
+                        // 6. Field Unit Terkait (Muncul jika SOP AP & Tidak All Units)
+                        Forms\Components\Select::make('unitTerkait')
+                            ->label('Pilih Unit Terkait')
+                            ->relationship('unitTerkait', 'nama_unit')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->key(fn (Forms\Get $get) => 'unit_input_' . ($get('is_all_units') ? 'locked' : 'active'))
+                            // VISIBLE: Tetap muncul selama kategori SOP AP (meskipun All Units aktif)
+                            ->visible(fn (Forms\Get $get) => $get('kategori_sop') === 'SOP_AP')
+
+                            // DISABLED: Mati jika All Units dicentang
+                            ->disabled(fn (Forms\Get $get) => $get('is_all_units'))
+
+                            // REQUIRED: Hanya wajib jika SOP AP dan All Units MATI
+                            ->required(fn (Forms\Get $get) =>
+                                $get('kategori_sop') === 'SOP_AP' &&
+                                !$get('is_all_units')
+                            )
+
+                            // PLACEHOLDER DINAMIS: Memberi info saat disabled
+                            ->placeholder(fn (Forms\Get $get) =>
+                                $get('is_all_units')
+                                    ? 'Otomatis berlaku untuk semua unit (Disabled)'
+                                    : 'Pilih unit...'
+                            )
+                            ->columnSpanFull(),
+                    ])->columns(2),
+
+                // SECTION 2: TANGGAL PENTING
+                Forms\Components\Section::make('Validitas Dokumen')
+                    ->schema([
+                        Forms\Components\DatePicker::make('tgl_pengesahan')
+                            ->label('Tgl Pengesahan')
+                            ->required()
+                            ->displayFormat('d/m/Y'),
+
+                        // LOGIC OTOMATIS TANGGAL
+                        Forms\Components\DatePicker::make('tgl_berlaku')
+                            ->label('Tgl Berlaku')
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                if ($state) {
+                                    $tglBerlaku = Carbon::parse($state);
+                                    $tglKadaluarsa = $tglBerlaku->copy()->addYears(3);
+
+                                    // LOGIC BARU: Cek apakah hasil perhitungan sudah lewat hari ini?
+                                    if ($tglKadaluarsa->isPast()) {
+                                        // Jika sudah kadaluarsa, Review Date dikosongkan (null)
+                                        $set('tgl_review_berikutnya', null);
+                                    } else {
+                                        // Jika belum, set Review Date (+1 Tahun)
+                                        $set('tgl_review_berikutnya', $tglBerlaku->copy()->addYear()->format('Y-m-d'));
+                                    }
+
+                                    // Set Tanggal Kadaluarsa
+                                    $set('tgl_kadaluarsa', $tglKadaluarsa->format('Y-m-d'));
+                                }
+                            }),
+
+                        // Field Readonly (Otomatis terisi)
+                        Forms\Components\DatePicker::make('tgl_review_berikutnya')
+                            ->label('Review Tahunan')
+                            ->readOnly() // User tidak perlu edit manual
+                            ->hint('Otomatis (+1 Thn)'),
+
+                        Forms\Components\DatePicker::make('tgl_kadaluarsa')
+                            ->label('Tgl Kadaluarsa')
+                            ->readOnly() // User tidak perlu edit manual
+                            ->hint('Otomatis (+3 Thn)'),
+                    ])->columns(3),
+
+                // SECTION 3: UPLOAD FILE
+                Forms\Components\Section::make('File Dokumen')
+                    ->schema([
+                        // 7. File Upload
+                        Forms\Components\FileUpload::make('file_path')
+                            ->label('Unggah Dokumen PDF')
+                            ->placeholder('Klik atau seret file ke sini untuk mengunggah')
+                            ->disk('public') // Simpan di storage public
+                            ->directory('dokumen-sop')
+                            ->acceptedFileTypes(['application/pdf'])
+                            ->maxSize(1024) // Maksimal 1MB
+                            ->required()
+                            ->columnSpanFull(),
+                    ]),
+            ]);
+    }
+
+        // --- 1. Buat Method Baru untuk menyimpan Schema (Agar bisa dipanggil dari luar) ---
+    public static function getInfolistSchema(): array
+    {
+        return [
+            // Header: Judul Besar & Status
+            Infolists\Components\Section::make()
+                ->schema([
+                    Infolists\Components\TextEntry::make('judul_sop')
+                        ->label('Judul Dokumen')
+                        ->weight('bold')
+                        ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                        ->columnSpanFull(),
+
+                    // Grid 2 Kolom
+                    Infolists\Components\Grid::make(2)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('nomor_sk')
+                                ->label('Nomor SK')
+                                ->placeholder('-'),
+
+                            Infolists\Components\TextEntry::make('status')
+                                ->badge()
+                                ->color(fn (string $state): string => match ($state) {
+                                    'KADALUARSA' => 'danger',
+                                    'AKTIF' => 'success',
+                                    default => 'success',
+                                }),
+
+                            Infolists\Components\TextEntry::make('unitTerkait.nama_unit')
+                                ->label('Unit Terkait')
+                                ->badge()
+                                ->color(fn ($record) => $record->is_all_units ? 'success' : 'info')
+                                ->getStateUsing(function ($record) {
+                                    if ($record->is_all_units) return 'SELURUH UNIT / INSTALASI';
+                                    $units = $record->unitTerkait->pluck('nama_unit');
+                                    return $units->count() > 0 ? $units : 'Internal Unit';
+                                }),
+                        ]),
+                ]),
+
+            // Section Validitas
+            Infolists\Components\Section::make('Validitas Dokumen')
+                ->schema([
+                    Infolists\Components\Grid::make(3)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('tgl_pengesahan')->label('Disahkan (TTD)')->date('d F Y')->icon('heroicon-m-pencil-square')->placeholder('-'),
+                            Infolists\Components\TextEntry::make('tgl_review_berikutnya')->label('Review Date')->date('d F Y')->icon('heroicon-m-clock')->color('warning')->placeholder('-'),
+                            Infolists\Components\TextEntry::make('tgl_kadaluarsa')->label('Expired Date')->date('d F Y')->icon('heroicon-m-calendar-days')->color('danger')->placeholder('-'),
+                        ]),
+                ]),
+
+            // Preview PDF
+            Infolists\Components\Section::make('Preview Dokumen')
+                ->schema([
+                    Infolists\Components\TextEntry::make('file_path')
+                        ->label('')
+                        ->view('filament.infolists.pdf-viewer')
+                        ->columnSpanFull(),
+                ])
+                ->collapsible(),
+        ];
+    }
+
+     // --- 2. Update Method infolist() bawaan Resource agar mengambil dari fungsi di atas ---
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist->schema(self::getInfolistSchema());
+    }
+
+    // --- 3. UPDATE TABEL  ---
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
+                // Judul SOP + Tanggal Upload
                 Tables\Columns\TextColumn::make('judul_sop')
-                    ->label('Dokumen')
+                    ->label('Judul Dokumen')
                     ->searchable()
-                    ->description(fn (DokumenSop $record) => $record->nomor_sk ?? 'Draft SK')
+                    ->sortable()
                     ->limit(40)
-                    ->tooltip(fn ($record) => $record->judul_sop)
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->tooltip(fn (DokumenSop $record) => $record->judul_sop)
+                    ->description(fn (DokumenSop $record) =>
+                        'Diupload: ' . $record->created_at->translatedFormat('d F Y H:i')
+                    ),
 
-                Tables\Columns\TextColumn::make('creator.nama_lengkap')
-                    ->label('Pengusul')
-                    ->icon('heroicon-m-user')
-                    ->searchable()
-                    ->toggleable(),
+                // Kategori
+                Tables\Columns\TextColumn::make('kategori_sop')
+                    ->label('Kategori')
+                    ->badge()
+                    ->colors([
+                        'info' => 'SOP',
+                        'warning' => 'SOP_AP',
+                    ]),
 
                 Tables\Columns\TextColumn::make('unitPemilik.nama_unit')
-                    ->label('Unit Pemilik')
+                    ->label('Unit')
                     ->badge()
-                    ->color('gray')
-                    ->toggleable(),
+                    ->color('info')
+                    ->searchable(),
 
+                // Unit Terkait (LOGIC VISUAL ALL UNITS)
+                // Kita gunakan TextColumn untuk menampilkan unit, tapi jika is_all_units=true,
+                // kita paksa tampilkan teks "SELURUH UNIT"
+                Tables\Columns\TextColumn::make('unitTerkait.nama_unit')
+                    ->label('Unit Terkait')
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    ->limitList(2)
+                    ->toggleable(isToggledHiddenByDefault: true) // Tersembunyi by default
+                    // Logic placeholder: Jika relasi kosong tapi is_all_units nyala, tampilkan teks khusus
+                    ->placeholder(fn (DokumenSop $record) =>
+                        $record->is_all_units ? 'SELURUH UNIT / INSTALASI' : '-'
+                    )
+                    // Beri warna hijau jika All Units
+                    ->color(fn (DokumenSop $record) => $record->is_all_units ? 'success' : null)
+                    ->weight(fn (DokumenSop $record) => $record->is_all_units ? 'bold' : null),
+
+                // Penanda All Units (Opsional: Icon Column)
+                Tables\Columns\IconColumn::make('is_all_units')
+                    ->label('All Units?')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-badge')
+                    ->falseIcon('heroicon-o-x-mark')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // Status
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    // 1. Ubah Teks Tampilan (Masking)
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'DALAM REVIEW' => 'BUTUH PERSETUJUAN', // Ubah teks khusus Verifikator
-                        default => $state,
-                    })
-                    // 2. Warna Badge
                     ->color(fn (string $state): string => match ($state) {
-                        'DALAM REVIEW' => 'warning', // Kuning
-                        'REVISI' => 'danger',        // Merah
-                        'AKTIF' => 'success',        // Hijau
-                        'KADALUARSA' => 'gray',
-                        default => 'gray',
-                    })
-                    // 3. Penanda Review Tahunan (Description)
+                        'AKTIF' => 'success',
+                        'KADALUARSA' => 'danger',
+                        default => 'success',
+                    }),
+                // Review Date
+                Tables\Columns\TextColumn::make('tgl_review_berikutnya')
+                    ->label('Review Date')
+                    ->date('d M Y')
+                    ->sortable()
+                    ->placeholder('-')
+                    ->toggleable()
+                    // --- REVISI LOGIKA PENANDA ---
                     ->description(function (DokumenSop $record) {
-                        if ($record->status !== 'AKTIF') return null;
+                        // Cek hanya jika tanggal ada dan status AKTIF
+                        if (!$record->tgl_review_berikutnya || $record->status !== 'AKTIF') return null;
 
-                        $now = now();
+                        $reviewDate = Carbon::parse($record->tgl_review_berikutnya);
+                        $diff = now()->diffInDays($reviewDate, false); // false agar return negatif jika lewat
 
-                        // Cek Mau Kadaluarsa (Prioritas Utama)
-                        if ($record->tgl_kadaluarsa && $now->diffInDays($record->tgl_kadaluarsa, false) <= 30) {
-                            return '🚨 Segera Kadaluarsa';
-                        }
-
-                        // Cek Review Tahunan
-                        if ($record->tgl_review_berikutnya && $now->diffInDays($record->tgl_review_berikutnya, false) <= 30) {
-                            return '⚠️ Perlu Review Tahunan';
+                        // HANYA TAMPILKAN JIKA H-30 SAMPAI HARI H (Positive 0 - 30)
+                        // Jika sudah lewat (negatif), return null (tidak ada deskripsi)
+                        if ($diff >= 0 && $diff <= 30) {
+                            return '⏰ Review dalam ' . intval($diff) . ' hari';
                         }
 
                         return null;
+                    })
+                    ->color(function (DokumenSop $record) {
+                        if (!$record->tgl_review_berikutnya || $record->status !== 'AKTIF') return null;
+
+                        $reviewDate = Carbon::parse($record->tgl_review_berikutnya);
+                        $diff = now()->diffInDays($reviewDate, false);
+
+                        // HANYA WARNA ORANYE JIKA H-30
+                        // Jika lewat, kembali ke warna default (null)
+                        if ($diff >= 0 && $diff <= 30) return 'warning';
+
+                        return null;
+                    })
+                    ->weight(function (DokumenSop $record) {
+                        if (!$record->tgl_review_berikutnya || $record->status !== 'AKTIF') return null;
+
+                        $diff = now()->diffInDays($record->tgl_review_berikutnya, false);
+
+                        // Tebal hanya jika H-30
+                        return ($diff >= 0 && $diff <= 30) ? 'bold' : null;
                     }),
 
+                // Expired Date
                 Tables\Columns\TextColumn::make('tgl_kadaluarsa')
-                    ->label('Exp. Date')
+                    ->label('Expired Date')
                     ->date('d M Y')
                     ->sortable()
-                    ->color(fn ($state) => $state && Carbon::parse($state)->isPast() ? 'danger' : 'success')
-                    ->toggleable(),
-            ])
-            ->defaultSort('updated_at', 'desc')
+                    ->placeholder('-')
+                    ->toggleable()
+                    // DESKRIPSI BARU: Tampil jika H-30 (Habis dalam X hari)
+                    ->description(function (DokumenSop $record) {
+                        if (!$record->tgl_kadaluarsa || $record->status !== 'AKTIF') return null;
 
-            // --- 3. FITUR FILTER STATUS ---
+                        $diff = now()->diffInDays($record->tgl_kadaluarsa, false);
+
+                        // Jika H-30 sampai Hari H
+                        if ($diff >= 0 && $diff <= 30) {
+                            return '⚠️ Kadaluarsa dalam ' . intval($diff) . ' hari';
+                        }
+                        return null;
+                    })
+                    // WARNA BARU: Danger jika H-30
+                    ->color(function (DokumenSop $record) {
+                        if (!$record->tgl_kadaluarsa || $record->status !== 'AKTIF') return null;
+
+                        $diff = now()->diffInDays($record->tgl_kadaluarsa, false);
+
+                        if ($diff >= 0 && $diff <= 30) return 'danger'; // Merah
+                        return null;
+                    })
+                    // BOLD: Jika H-30
+                    ->weight(function (DokumenSop $record) {
+                        if (!$record->tgl_kadaluarsa || $record->status !== 'AKTIF') return null;
+
+                        $diff = now()->diffInDays($record->tgl_kadaluarsa, false);
+                        return ($diff >= 0 && $diff <= 30) ? 'bold' : null;
+                    }),
+            ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
-                    ->label('Filter Status')
                     ->options([
-                        'DALAM REVIEW' => 'Butuh Persetujuan', // Label disamakan
-                        'REVISI'       => 'Revisi',
-                        'AKTIF'        => 'Aktif',
-                        'KADALUARSA'   => 'Kadaluarsa',
+                        'AKTIF' => 'Aktif',
+                        'KADALUARSA' => 'Kadaluarsa',
                     ]),
-
-                Tables\Filters\SelectFilter::make('id_unit_pemilik')
-                    ->label('Filter Unit')
-                    ->relationship('unitPemilik', 'nama_unit')
-                    ->searchable()
-                    ->preload(),
+                Tables\Filters\SelectFilter::make('kategori_sop')
+                    ->options([
+                        'SOP' => 'SOP',
+                        'SOP_AP' => 'SOP AP',
+                    ]),
             ])
-            // -----------------------------
-
             ->actions([
-                // --- 1. PREVIEW DOKUMEN (REVISI: Modal Content Custom) ---
-                Tables\Actions\Action::make('preview')
-                    ->label(false)
-                    ->icon('heroicon-o-eye')
-                    ->color('info')
-                    ->tooltip('Lihat Dokumen')
-                    ->modalHeading(fn ($record) => "Preview: {$record->judul_sop}")
-                    ->modalContent(fn ($record) => new HtmlString(
-                        '<div style="width: 100%; height: 600px; background-color: #f3f4f6; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
-                            <iframe
-                                src="'.asset('storage/' . $record->file_path).'"
-                                style="width: 100%; height: 100%; border: none;"
-                            ></iframe>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.875rem; color: #4b5563;">
-                            <strong>Unit Terkait:</strong> ' .
-                            ($record->unitTerkait->count() > 0
-                                ? $record->unitTerkait->pluck('nama_unit')->join(', ')
-                                : 'Internal Unit') .
-                        '</div>'
-                    ))
-                    ->modalSubmitAction(false) // Hilangkan tombol submit default
-                    ->modalCancelActionLabel('Tutup'), // Ganti label cancel jadi Tutup
+                Tables\Actions\ActionGroup::make([
+                    // 1. View Detail
+                    Tables\Actions\ViewAction::make()
+                        ->label('Detail')
+                        ->tooltip('Lihat Detail & Preview')
+                        ->modalHeading('Detail Dokumen SOP')
+                        ->modalWidth('4xl')
+                        ->icon('heroicon-o-eye')
+                        ->color('info'), // Warna biru muda
 
-                // --- 2. APPROVE ---
-                Tables\Actions\Action::make('approve')
-                    ->label(false)
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->tooltip('Setujui SOP')
-                    ->visible(fn (DokumenSop $record) => $record->status === 'DALAM REVIEW')
-                    ->requiresConfirmation()
+                    // 2. Download PDF
+                    Tables\Actions\Action::make('download')
+                        ->label('Unduh')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success') // Warna hijau
+                        ->url(fn (DokumenSop $record) => asset('storage/' . $record->file_path))
+                        ->openUrlInNewTab(),
 
-                    // Detail Konfirmasi
-                    ->modalHeading('Setujui Dokumen SOP?')
-                    ->modalDescription(fn ($record) => "Anda akan menyetujui dokumen '{$record->judul_sop}'. Status akan berubah menjadi AKTIF dan tanggal berlaku (TMT) akan diset hari ini.")
-                    ->modalSubmitActionLabel('Ya, Setujui')
-                    ->modalIcon('heroicon-o-check-circle')
+                    // 3. Edit
+                    Tables\Actions\EditAction::make()
+                        ->label('Ubah')
+                        ->tooltip('Ubah Data')
+                        ->modalHeading('Ubah Dokumen SOP')
+                        ->modalWidth('4xl')
+                        ->icon('heroicon-o-pencil-square')
+                        ->color('warning'), // Warna oranye
 
-                    ->action(function (DokumenSop $record) {
-                        $now = now();   // waktu saat tombol diklik
-                        $record->update([
-                            'status' => 'AKTIF',
-                            'tgl_pengesahan' => $record->tgl_pengesahan ?? $now,
-                            'tgl_berlaku' => $now,
-                            // Review berikutnya = 1 tahun dari sekarang
-                            'tgl_review_berikutnya' => $now->copy()->addYear(),
-                            // Kadaluarsa = 3 tahun dari sekarang
-                            'tgl_kadaluarsa' => $now->copy()->addYears(3),
-                        ]);
-
-                        Notifikasi::create([
-                            'id_user' => $record->created_by,
-                            'judul' => 'SOP Disetujui',
-                            'pesan' => "SOP '{$record->judul_sop}' telah disetujui dan kini AKTIF.",
-                            'is_read' => false,
-                            'created_at' => now(),
-                            'id_sop' => $record->id_sop
-                        ]);
-
-                        FilamentNotification::make()->title('SOP Disetujui & Jadwal Review Dibuat')->success()->send();
-                    }),
-
-                // ACTION REJECT / REVISI
-                Tables\Actions\Action::make('revisi')
-                    ->label(false)
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->tooltip('Minta Revisi')
-                    ->visible(fn (DokumenSop $record) => $record->status === 'DALAM REVIEW')
-                    ->modalHeading('Kembalikan untuk Revisi')
-                    ->modalDescription('Silakan berikan catatan perbaikan untuk pengusul.')
-                    ->modalSubmitActionLabel('Kirim Revisi')
-                    ->form([
-                        Forms\Components\Textarea::make('catatan')
-                            ->label('Catatan Revisi')
-                            ->placeholder('Contoh: Format header salah, mohon diperbaiki sesuai template.')
-                            ->required()
-                            ->rows(4)
-                    ])
-                    ->action(function (DokumenSop $record, array $data) {
-                        // FIX: Pass catatan revisi ke model sebelum save agar ditangkap Observer
-                        $record->catatan_revisi = $data['catatan'];
-                        $record->status = 'REVISI';
-                        $record->save();
-
-                        Notifikasi::create([
-                            'id_user' => $record->created_by,
-                            'judul' => 'Revisi Diperlukan',
-                            'pesan' => "Verifikator meminta revisi pada SOP '{$record->judul_sop}': " . $data['catatan'],
-                            'is_read' => false,
-                            'created_at' => now(),
-                            'id_sop' => $record->id_sop
-                        ]);
-
-                        FilamentNotification::make()->title('Status diubah ke Revisi')->success()->send();
-                    }),
-
-                // ACTION MANUAL ALERT
-                Tables\Actions\Action::make('send_alert')
-                    ->label(false)
-                    ->icon('heroicon-o-bell-alert')
-                    ->color('warning')
-                    ->tooltip('Kirim Alert Review Tahunan')
-                    ->visible(fn (DokumenSop $record) => $record->status === 'AKTIF' && $record->tgl_kadaluarsa)
-                    ->requiresConfirmation()
-                    ->modalHeading('Kirim Peringatan Review?')
-                    ->modalDescription('Pengusul akan menerima notifikasi lonceng untuk segera melakukan review SOP ini.')
-                    ->modalSubmitActionLabel('Kirim Alert')
-                    ->action(function (DokumenSop $record) {
-                        Notifikasi::create([
-                            'id_user' => $record->created_by,
-                            'judul' => 'Peringatan Review SOP',
-                            'pesan' => "PERINGATAN MANUAL: SOP '{$record->judul_sop}' akan segera kadaluarsa pada " . Carbon::parse($record->tgl_kadaluarsa)->format('d M Y') . ". Mohon segera lakukan review.",
-                            'is_read' => false,
-                            'created_at' => now(),
-                            'id_sop' => $record->id_sop
-                        ]);
-
-                        FilamentNotification::make()->title('Alert terkirim ke Pengusul')->success()->send();
-                    }),
-            ]);
+                    // 4. Delete
+                    Tables\Actions\DeleteAction::make()
+                        ->label('Hapus')
+                        ->tooltip('Hapus Data')
+                        ->modalHeading('Hapus Dokumen SOP')
+                        ->modalWidth('4xl')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->after(function (DokumenSop $record) {
+                            RiwayatSop::create([
+                                'id_sop' => $record->id_sop,
+                                'id_user' => Auth::user()->id_user,
+                                'status_sop' => 'KADALUARSA', // Kita anggap saat dihapus statusnya non-aktif (Kadaluarsa/Arsip)
+                                'catatan' => 'Dokumen dinonaktifkan sementara (dimasukkan ke sampah) oleh Verifikator.',
+                                'dokumen_path' => $record->file_path,
+                            ]);
+                        }),
+                ])
+                ->icon('heroicon-m-ellipsis-vertical') // Ikon titik tiga
+                ->color('primary') // Warna ikon utama
+                ->tooltip('Menu Aksi') // Tooltip saat hover ikon grup
+                ->extraAttributes(['class' => 'w-auto min-w-[150px]']),
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ])
+            ->paginated([10, 25, 50]);
     }
 
-    // --- FILTER PENTING: SEMBUNYIKAN DRAFT DARI VERIFIKATOR ---
-    public static function getEloquentQuery(): Builder
+    public static function getRelations(): array
     {
-        return parent::getEloquentQuery()
-            // Verifikator tidak boleh melihat status DRAFT
-            ->where('status', '!=', 'DRAFT') 
-            
-            // Opsional: Agar tidak melihat soft deleted items (jika pakai soft deletes)
-            ->withoutGlobalScopes([
-                // SoftDeletingScope::class, 
-            ]);
-    }
-
-    public static function getTabs(): array
-    {
-        return [
-            'all' => Tab::make('Semua Data'),
-
-            'verifikasi' => Tab::make('Butuh Persetujuan')
-                ->icon('heroicon-m-inbox-arrow-down')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'DALAM REVIEW'))
-                ->badge(DokumenSop::where('status', 'DALAM REVIEW')->count())
-                ->badgeColor('warning'),
-
-            'review' => Tab::make('Review Tahunan')
-                ->icon('heroicon-m-clock')
-                ->modifyQueryUsing(fn (Builder $query) => $query
-                    ->where('status', 'AKTIF')
-                    ->whereDate('tgl_kadaluarsa', '<=', now()->addDays(30))
-                )
-                ->badgeColor('danger'),
-        ];
+        return [];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListDokumenSops::route('/'),
+            'create' => Pages\CreateDokumenSop::route('/create'),
+            'edit' => Pages\EditDokumenSop::route('/{record}/edit'),
         ];
     }
 }

@@ -3,56 +3,64 @@
 namespace App\Filament\Verifikator\Widgets;
 
 use App\Models\DokumenSop;
+// Import Resource yang mau dituju
+use App\Filament\Verifikator\Resources\DokumenSopResource;
+use App\Filament\Verifikator\Resources\SopAktifResource; 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class VerifikatorStats extends BaseWidget
 {
-    // Mengatur urutan tampil di dashboard (paling atas)
     protected static ?int $sort = 1;
-
-    // Refresh data otomatis setiap 15 detik (opsional)
     protected static ?string $pollingInterval = '15s';
 
     protected function getStats(): array
     {
-        // 1. Total Dokumen (Kecuali Draft)
-        $totalDokumen = DokumenSop::where('status', '!=', 'DRAFT')->count();
+        // Pastikan menggunakan id_user (primary key custom Anda)
+        $userId = Auth::user()->id_user; 
 
-        // 2. Butuh Verifikasi (Dalam Review)
-        $butuhVerifikasi = DokumenSop::where('status', 'DALAM REVIEW')->count();
-
-        // 3. Segera Kadaluarsa (Aktif & H-30 expired)
-        $segeraKadaluarsa = DokumenSop::where('status', 'AKTIF')
-            ->whereBetween('tgl_kadaluarsa', [now(), now()->addDays(30)])
+        // 1. Mendekati Review Tahunan (Aktif & H-30 review)
+        $needsReviewCount = DokumenSop::where('created_by', $userId)
+            ->where('status', 'AKTIF')
+            ->whereDate('tgl_review_berikutnya', '<=', now()->addDays(30)) 
+            ->whereDate('tgl_review_berikutnya', '>=', now()) 
             ->count();
 
-        // 4. SOP Aktif
-        $sopAktif = DokumenSop::where('status', 'AKTIF')->count();
+        // 2. Segera Kadaluarsa (Aktif & H-30 expired)
+        $segeraKadaluarsa = DokumenSop::where('created_by', $userId)
+            ->where('status', 'AKTIF')
+            ->whereDate('tgl_kadaluarsa', '<=', now()->addDays(30))
+            ->whereDate('tgl_kadaluarsa', '>=', now())
+            ->count();
 
         return [
-            Stat::make('Total Dokumen', $totalDokumen)
-                ->description('Semua dokumen masuk')
+            // CARD 1: Total Dokumen -> Link ke Verifikasi SOP (DokumenSopResource)
+            Stat::make('Total Dokumen', DokumenSop::where('created_by', $userId)->count())
+                ->description('Seluruh dokumen Anda')
                 ->descriptionIcon('heroicon-m-document-duplicate')
-                ->color('gray')
-                ->url(route('filament.verifikator.resources.dokumen-sops.index')),
+                ->chart([7, 2, 10, 3, 15, 4, 17])
+                ->color('info')
+                // BEST PRACTICE: Gunakan getUrl() dari Resource
+                ->url(DokumenSopResource::getUrl('index')), 
 
-            Stat::make('Butuh Verifikasi', $butuhVerifikasi)
-                ->description('Menunggu persetujuan')
-                ->descriptionIcon('heroicon-m-clipboard-document-check')
-                ->color('warning') // Kuning
-                ->url(route('filament.verifikator.resources.dokumen-sops.index', ['tableFilters[status][value]' => 'DALAM REVIEW'])),
+            Stat::make('Perlu Review Tahunan', $needsReviewCount)
+                ->description('Mendekati jadwal review (H-30)')
+                ->descriptionIcon('heroicon-m-calendar-days')
+                ->color('warning'), 
 
             Stat::make('Segera Kadaluarsa', $segeraKadaluarsa)
                 ->description('Habis dalam 30 hari')
                 ->descriptionIcon('heroicon-m-clock')
-                ->color('danger'), // Merah
+                ->color('danger'), 
 
-            Stat::make('SOP Aktif', $sopAktif)
-                ->description('Dokumen berlaku saat ini')
-                ->descriptionIcon('heroicon-m-check-circle')
-                ->color('success'), // Hijau
+            // CARD 4: SOP Aktif -> Link ke SOP Aktif (SopAktifResource)
+            Stat::make('SOP Aktif', DokumenSop::where('created_by', $userId)->where('status', 'AKTIF')->count())
+                ->description('Dokumen sah dan berlaku')
+                ->descriptionIcon('heroicon-m-check-badge')
+                ->color('success')
+                // BEST PRACTICE: Gunakan getUrl() dari Resource
+                ->url(SopAktifResource::getUrl('index')),
         ];
     }
 }

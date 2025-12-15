@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SIM-SOP - RSUP Prof. Ngoerah</title>
-    
+
     <link rel="icon" href="{{ asset('images/faviconlogo-rs.svg') }}" type="image/svg+xml">
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,8 +23,8 @@
                     },
                     colors: {
                         brand: {
-                            50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 
-                            400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 
+                            50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7',
+                            400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857',
                             800: '#065f46', 900: '#064e3b', 950: '#022c22',
                         },
                         dark: {
@@ -79,7 +79,7 @@
             background: rgba(30, 41, 59, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -112,10 +112,10 @@
                 search: new URLSearchParams(window.location.search).get('search') || '',
                 direktoratId: new URLSearchParams(window.location.search).get('direktorat_id') || '',
                 currentPath: window.location.pathname + window.location.search, // Track path + query only
-                
+
                 init() {
                     this.darkMode = localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                    
+
                     // --- 1. SEARCH DELAY LOGIC (DEBOUNCE) ---
                     // Kita watch variabel 'search'. Karena di input pakai x-model.debounce.500ms,
                     // maka watch ini baru akan jalan 500ms setelah user berhenti mengetik.
@@ -156,7 +156,7 @@
                 // AJAX Fetch Logic
                 async updateResults(url = null, pushToHistory = true) {
                     this.isLoading = true;
-                    
+
                     // Build URL if not provided
                     if (!url) {
                          const params = new URLSearchParams();
@@ -172,22 +172,22 @@
                         const html = await response.text();
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(html, 'text/html');
-                        
+
                         // Replace Konten Daftar SOP (Termasuk Pagination di dalamnya)
                         const newList = doc.getElementById('dokumen-list');
                         if (newList) {
                             document.getElementById('dokumen-list').innerHTML = newList.innerHTML;
-                            
+
                             // Penting: Refresh AOS agar animasi ulang (dan tidak hidden)
                             setTimeout(() => {
-                                AOS.refreshHard(); 
+                                AOS.refreshHard();
                             }, 200);
 
                             if (pushToHistory) {
                                 window.history.pushState({}, '', url);
                                 this.currentPath = window.location.pathname + window.location.search;
                             }
-                            
+
                             // Scroll sedikit ke atas list agar user tahu data berubah
                             // Cek jika kita tidak sedang di bagian atas
                             const target = document.getElementById('dokumen');
@@ -228,7 +228,7 @@
                     this.direktoratId = '';
                     this.updateResults();
                 },
-                
+
                 // Handler Klik Pagination (Mencegah reload full)
                 handleMainClick(e) {
                     // Cek apakah yang diklik adalah link pagination
@@ -252,7 +252,7 @@
          :class="isScrolled ? 'glass shadow-lg py-2 dark:border-white/5' : 'bg-transparent py-4'">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center">
-                
+
                 <a href="{{ route('landing-page') }}" @click.prevent="scrollToTop()" class="flex items-center space-x-3 group cursor-pointer">
                     <div class="relative">
                         <div class="absolute inset-0 bg-emerald-500 blur-lg opacity-20 rounded-full group-hover:opacity-40 transition duration-300"></div>
@@ -266,7 +266,7 @@
 
                 <div class="hidden md:flex items-center space-x-1 p-1 bg-white/50 dark:bg-white/5 rounded-full backdrop-blur-md border border-gray-200/50 dark:border-white/5 shadow-sm">
                     <a href="{{ route('landing-page') }}" @click.prevent="scrollToTop()" class="px-5 py-2 text-sm font-semibold rounded-full text-brand-700 bg-brand-50 dark:text-brand-300 dark:bg-brand-900/30 transition-all cursor-pointer">Beranda</a>
-                    
+
                     <button @click="scrollToSection('fitur')" class="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Fitur</button>
                     <button @click="scrollToSection('dokumen')" class="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Cari SOP</button>
                 </div>
@@ -278,7 +278,7 @@
                     </button>
 
                     <div class="relative group" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
-                        <button class="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold text-sm shadow-lg hover:shadow-xl hover:translate-y-[-2px] transition-all">
+                        <button class="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold text-sm shadow-lg hover:shadow-xl hover:translate-y-0.5 transition-all">
                             <span>Akses Portal</span>
                             <svg class="w-4 h-4 transition-transform duration-300" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
@@ -307,10 +307,10 @@
         <div x-show="mobileMenuOpen" x-collapse class="md:hidden glass border-t border-gray-100 dark:border-white/5">
             <div class="px-4 py-4 space-y-2">
                 <a href="#beranda" @click="mobileMenuOpen = false; scrollToTop()" class="block px-4 py-3 rounded-lg bg-gray-50 dark:bg-white/5 text-brand-700 dark:text-brand-300 font-medium">Beranda</a>
-                
+
                 <button @click="mobileMenuOpen = false; scrollToSection('fitur')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Fitur</button>
                 <button @click="mobileMenuOpen = false; scrollToSection('dokumen')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Cari SOP</button>
-                
+
                 <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-white/10">
                     <a href="/pengusul" class="text-center py-2.5 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-lg text-sm font-semibold">Pengusul</a>
                     <a href="/verifikator" class="text-center py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-semibold">Verifikator</a>
@@ -323,7 +323,7 @@
 
     <header class="relative pt-32 pb-16 lg:pt-48 lg:pb-24 overflow-hidden z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
-            
+
             <div data-aos="fade-down" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-100 dark:bg-brand-900/30 dark:border-brand-800/50 mb-8 backdrop-blur-sm">
                 <span class="flex h-2 w-2 relative">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
@@ -342,7 +342,7 @@
             </p>
 
             <div data-aos="fade-up" data-aos-delay="400" class="flex flex-col sm:flex-row justify-center gap-4">
-                <button @click="scrollToSection('dokumen')" 
+                <button @click="scrollToSection('dokumen')"
                         class="px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold text-lg shadow-xl shadow-gray-900/20 hover:scale-105 hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 group">
                     <span>Mulai Pencarian</span>
                     <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
@@ -380,7 +380,7 @@
                 <span class="text-brand-600 dark:text-brand-400 font-bold tracking-widest uppercase text-sm mb-2 block">Fitur Unggulan</span>
                 <h2 class="text-4xl md:text-5xl font-display font-bold text-gray-900 dark:text-white">Kenapa SIM-SOP?</h2>
             </div>
-            
+
             <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <div data-aos="fade-up" data-aos-delay="100" class="group p-8 rounded-3xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 hover:border-brand-500/50 dark:hover:border-brand-500/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
                     <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-400 to-teal-600 flex items-center justify-center mb-6 text-white shadow-lg shadow-brand-500/30 group-hover:scale-110 transition duration-300">
@@ -427,7 +427,7 @@
                 </div>
 
                 <div class="w-full lg:w-1/3 relative" x-data="{ open: false }">
-                    <button @click="open = !open" @click.outside="open = false" type="button" 
+                    <button @click="open = !open" @click.outside="open = false" type="button"
                             class="block w-full pl-14 pr-10 py-5 text-left text-base border-2 border-transparent bg-gray-50 dark:bg-dark-800 text-gray-900 dark:text-white rounded-2xl focus:outline-none focus:border-brand-500 focus:bg-white dark:focus:bg-dark-900 transition-all shadow-inner relative">
                         <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                             <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
@@ -447,13 +447,13 @@
 
                     <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-dark-800 rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 max-h-80 overflow-y-auto custom-scrollbar">
                         <div class="p-2 space-y-1">
-                            <div @click="handleFilter(''); open = false" 
+                            <div @click="handleFilter(''); open = false"
                                  class="px-4 py-3 rounded-xl cursor-pointer transition-colors"
                                  :class="!direktoratId ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">
                                 Semua Direktorat
                             </div>
                             @foreach($direktorats as $dir)
-                            <div @click="handleFilter('{{ $dir->id_direktorat }}'); open = false" 
+                            <div @click="handleFilter('{{ $dir->id_direktorat }}'); open = false"
                                  class="px-4 py-3 rounded-xl cursor-pointer transition-colors"
                                  :class="direktoratId == '{{ $dir->id_direktorat }}' ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">
                                 {{ $dir->nama_direktorat }}
@@ -475,7 +475,7 @@
 
     <main id="dokumen" class="relative z-10 pt-24 pb-20" @click="handleMainClick($event)">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="dokumen-list">
-            
+
             <div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-6 relative">
                  <div x-show="isLoading" class="absolute inset-0 bg-gray-50/80 dark:bg-dark-900/80 z-20 flex items-center justify-center backdrop-blur-sm rounded-3xl transition-opacity duration-300">
                     <div class="flex items-center gap-3 bg-white dark:bg-dark-800 px-6 py-3 rounded-full shadow-xl">
@@ -566,7 +566,7 @@
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10 relative z-10">
             <div class="grid md:grid-cols-4 gap-12 mb-16">
-                
+
                 <div class="col-span-1 md:col-span-2">
                     <div class="flex items-center space-x-3 mb-6">
                         <img src="{{ asset('images/logo-rs.png') }}" alt="Logo" class="h-10 w-auto rounded-lg p-1">

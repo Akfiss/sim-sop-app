@@ -4,6 +4,7 @@ namespace App\Filament\Pengusul\Widgets;
 
 use App\Models\DokumenSop;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use App\Filament\Pengusul\Resources\SopAktifResource;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,38 +14,34 @@ class SopPengusulStats extends BaseWidget
     {
         $userId = Auth::user()->id_user;
 
+        // 5. Akan Kadaluarsa ("Approaching Expiration")
+        $approachingExpiredCount = DokumenSop::where('created_by', $userId)
+            ->where('status', 'AKTIF')
+            ->whereDate('tgl_kadaluarsa', '<=', now()->addDays(30))
+            ->whereDate('tgl_kadaluarsa', '>=', now())
+            ->count();
+
         return [
             // KARTU 1: TOTAL SOP
             Stat::make('Total Dokumen', DokumenSop::where('created_by', $userId)->count())
                 ->description('Seluruh dokumen Anda')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->chart([7, 2, 10, 3, 15, 4, 17])
-                ->color('primary')
-                ->url(route('filament.pengusul.resources.dokumen-sops.index')),
+                ->color('info')
+                ->url(SopAktifResource::getUrl('index')),
 
-            // KARTU 2: DALAM REVIEW
-            Stat::make('Dalam Review', DokumenSop::where('created_by', $userId)->where('status', 'DALAM REVIEW')->count())
-                ->description('Menunggu verifikasi')
-                ->descriptionIcon('heroicon-m-clock')
-                ->chart([2, 10, 3, 12, 1, 15, 10])
-                ->color('warning')
-                ->url(route('filament.pengusul.resources.dokumen-sops.index', ['tableFilters[status][value]' => 'DALAM REVIEW'])),
-
-            // KARTU 3: PERLU REVISI
-            Stat::make('Perlu Revisi', DokumenSop::where('created_by', $userId)->where('status', 'REVISI')->count())
-                ->description('Harap segera diperbaiki')
-                ->descriptionIcon('heroicon-m-exclamation-circle')
-                ->chart([15, 4, 10, 2, 12, 4, 12])
-                ->color('danger')
-                ->url(route('filament.pengusul.resources.dokumen-sops.index', ['tableFilters[status][value]' => 'REVISI'])),
-
-            // KARTU 4: SOP AKTIF
+            // KARTU 2: SOP AKTIF
             Stat::make('SOP Aktif', DokumenSop::where('created_by', $userId)->where('status', 'AKTIF')->count())
                 ->description('Dokumen sah & berlaku')
                 ->descriptionIcon('heroicon-m-check-badge')
-                ->chart([10, 15, 8, 14, 18, 12, 20])
                 ->color('success')
-                ->url(route('filament.pengusul.resources.dokumen-sops.index', ['tableFilters[status][value]' => 'AKTIF'])),
+                ->url(SopAktifResource::getUrl( 'index',['tableFilters[status][value]' => 'AKTIF'])),
+
+            // KARTU 3: SOP TIDAK AKTIF
+            Stat::make('Akan Kadaluarsa', $approachingExpiredCount)
+                ->description('Mendekati tanggal kadaluarsa (H-30)')
+                ->descriptionIcon('heroicon-m-exclamation-triangle')
+                ->color('danger'),
         ];
     }
 }

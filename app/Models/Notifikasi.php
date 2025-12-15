@@ -11,7 +11,13 @@ class Notifikasi extends Model
     public $timestamps = false; // Kita handle manual sesuai PDM (hanya created_at)
 
     protected $fillable = [
-        'judul', 'pesan', 'is_read', 'created_at', 'id_user', 'id_sop'
+        'id_user',
+        'judul',
+        'pesan',
+        'is_read',
+        'id_sop',
+        'data',
+        'tipe',
     ];
 
     protected $casts = [

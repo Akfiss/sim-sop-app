@@ -5,38 +5,39 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\DokumenSop;
 use App\Models\Notifikasi;
+use App\Models\User;
+use App\Events\NewNotification; // Import Event Realtime
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB; // Wajib import DB
 
 class CheckSopExpiration extends Command
 {
     protected $signature = 'sop:check-expiration';
-    protected $description = 'Cek siklus hidup SOP (Review Tahunan & Kadaluarsa 3 Tahun)';
+    protected $description = 'Cek siklus hidup SOP (Review Tahunan & Kadaluarsa 3 Tahun) dan Notifikasi Unit';
 
     public function handle()
     {
         $today = Carbon::now();
 
+        $this->info("Memulai pengecekan SOP pada tanggal: " . $today->format('d M Y'));
 
         // ---------------------------------------------------------
-        // 1. LOGIC AUTO-SKIP REVIEW (Jika user lupa review sampai tanggalnya lewat)
+        // 1. LOGIC AUTO-SKIP REVIEW
         // ---------------------------------------------------------
         $missedReviews = DokumenSop::where('status', 'AKTIF')
-            ->whereDate('tgl_review_berikutnya', '<', $today) // Tanggal review sudah lewat
-            ->whereDate('tgl_kadaluarsa', '>', $today) // Tapi belum expired total
+            ->whereDate('tgl_review_berikutnya', '<', $today)
+            ->whereDate('tgl_kadaluarsa', '>', $today)
             ->get();
 
         foreach ($missedReviews as $sop) {
-            // Majukan jadwal ke tahun depan otomatis
             $nextReview = Carbon::parse($sop->tgl_review_berikutnya)->addYear();
 
-            // Cek apakah tahun depan sudah expired?
             if ($nextReview->gte(Carbon::parse($sop->tgl_kadaluarsa))) {
-                $sop->update(['tgl_review_berikutnya' => null]); // Stop review, fokus expired
+                $sop->update(['tgl_review_berikutnya' => null]);
             } else {
                 $sop->update(['tgl_review_berikutnya' => $nextReview]);
             }
-
-            $this->info("Auto-bump review date for SOP {$sop->id_sop}");
+            $this->info("Auto-bump review date for SOP {$sop->judul_sop}");
         }
 
         // ---------------------------------------------------------
@@ -49,68 +50,58 @@ class CheckSopExpiration extends Command
         foreach ($expiredSops as $sop) {
             $sop->update(['status' => 'KADALUARSA']);
 
-            $this->sendNotification(
-                $sop->created_by,
+            // REVISI: Kirim ke Unit Pemilik, BUKAN created_by
+            $this->sendToUnit(
+                $sop->id_unit_pemilik, // Ambil Unit Pemilik
                 'SOP Kadaluarsa (Masa 3 Tahun Habis)',
                 "SOP '{$sop->judul_sop}' telah melewati masa berlaku 3 tahun. Status kini KADALUARSA.",
                 $sop->id_sop
             );
 
-            $this->info("SOP {$sop->id_sop} set to KADALUARSA");
+            $this->info("SOP {$sop->judul_sop} set to KADALUARSA");
         }
 
         // ---------------------------------------------------------
         // 3. LOGIC REVIEW TAHUNAN & UPDATE TANGGAL
         // ---------------------------------------------------------
-
-        // Ambil SOP Aktif yang punya jadwal review
         $activeSops = DokumenSop::where('status', 'AKTIF')
             ->whereNotNull('tgl_review_berikutnya')
-            ->whereDate('tgl_kadaluarsa', '>', $today) // Yang belum expired total
+            ->whereDate('tgl_kadaluarsa', '>', $today)
             ->get();
 
         foreach ($activeSops as $sop) {
             $reviewDate = Carbon::parse($sop->tgl_review_berikutnya);
 
-            // A. SKENARIO: SUDAH LEWAT TANGGAL REVIEW (TAPI BELUM EXPIRED)
-            // Artinya review tahun ini sudah lewat, kita majukan jadwal ke tahun depan
+            // A. SKENARIO LEWAT TANGGAL (Bump Year)
             if ($today->greaterThan($reviewDate)) {
                 $nextYearDate = $reviewDate->copy()->addYear();
-
-                // Pastikan tahun depan belum melewati batas kadaluarsa (3 tahun)
                 if ($nextYearDate->lessThanOrEqualTo(Carbon::parse($sop->tgl_kadaluarsa))) {
                     $sop->update(['tgl_review_berikutnya' => $nextYearDate]);
-                    $this->info("SOP {$sop->id_sop}: Review date bumped to next year ({$nextYearDate->format('Y-m-d')})");
                 } else {
-                    // Kalau tahun depan sudah expired, kosongkan jadwal review (biar fokus ke expired date)
                     $sop->update(['tgl_review_berikutnya' => null]);
                 }
-                continue; // Lanjut ke SOP berikutnya
+                continue;
             }
 
-            // B. SKENARIO: MENDEKATI TANGGAL REVIEW (H-30)
-            $daysLeft = $today->diffInDays($reviewDate, false); // false = return + or - days
+            // B. SKENARIO REMINDER H-30
+            $daysLeft = $today->diffInDays($reviewDate, false);
 
-            // Alert H-30 Review (Mulai kirim notif setiap 3 hari)
             if ($daysLeft >= 0 && $daysLeft <= 30 && $daysLeft % 3 == 0) {
-                // Tentukan ini review tahun keberapa
                 $tahunKe = $sop->created_at->diffInYears($reviewDate) + 1;
 
-                $this->sendNotification(
-                    $sop->created_by,
+                // REVISI: Kirim ke Unit Pemilik
+                $this->sendToUnit(
+                    $sop->id_unit_pemilik,
                     "Peringatan Review Tahunan (Tahun ke-{$tahunKe})",
-                    "Reminder: SOP '{$sop->judul_sop}' wajib direview ulang per tahun. Jadwal review: " . $reviewDate->format('d M Y') . " (H-{$daysLeft}).",
+                    "Reminder: SOP '{$sop->judul_sop}' wajib direview ulang per tahun. Jadwal: " . $reviewDate->format('d M Y') . " (H-{$daysLeft}).",
                     $sop->id_sop
                 );
-
-                $this->info("SOP {$sop->id_sop}: Sent Annual Review Alert (H-{$daysLeft})");
             }
         }
 
         // ---------------------------------------------------------
         // 4. LOGIC ALERT MENDEKATI KADALUARSA (H-30 EXPIRED)
         // ---------------------------------------------------------
-        // (Ini alert khusus mau mati total 3 tahun, terpisah dari review tahunan)
         $expiringSops = DokumenSop::where('status', 'AKTIF')
             ->whereDate('tgl_kadaluarsa', '>', $today)
             ->whereDate('tgl_kadaluarsa', '<=', $today->copy()->addDays(30))
@@ -120,27 +111,43 @@ class CheckSopExpiration extends Command
             $daysLeft = $today->diffInDays(Carbon::parse($sop->tgl_kadaluarsa), false);
 
             if ($daysLeft % 3 == 0) {
-                $this->sendNotification(
-                    $sop->created_by,
+                // REVISI: Kirim ke Unit Pemilik
+                $this->sendToUnit(
+                    $sop->id_unit_pemilik,
                     'PERINGATAN FINAL: SOP Akan Kadaluarsa',
                     "URGENT: SOP '{$sop->judul_sop}' akan mati total dalam {$daysLeft} hari lagi. Segera perbarui dokumen!",
                     $sop->id_sop
                 );
-                $this->info("SOP {$sop->id_sop}: Sent Expiration Alert (H-{$daysLeft})");
             }
         }
     }
 
-    // Helper kirim notif
-    private function sendNotification($userId, $judul, $pesan, $sopId)
+    /**
+     * Helper Baru: Kirim Notifikasi ke SEMUA USER di dalam UNIT
+     */
+    private function sendToUnit($unitId, $judul, $pesan, $sopId)
     {
-        Notifikasi::create([
-            'id_user' => $userId,
-            'judul' => $judul,
-            'pesan' => $pesan,
-            'is_read' => false,
-            'created_at' => now(),
-            'id_sop' => $sopId
-        ]);
+        // 1. Ambil semua ID User yang ada di unit tersebut (via tb_unit_user)
+        $userIds = DB::table('tb_unit_user')
+            ->where('id_unit', $unitId)
+            ->pluck('id_user');
+
+        // 2. Loop dan kirim notifikasi
+        foreach ($userIds as $userId) {
+            $notif = Notifikasi::create([
+                'id_user' => $userId,
+                'judul'   => $judul,
+                'pesan'   => $pesan,
+                'is_read' => false,
+                'id_sop'  => $sopId
+            ]);
+
+            // 3. Trigger Event Realtime (Agar lonceng berbunyi tanpa refresh)
+            try {
+                NewNotification::dispatch($notif);
+            } catch (\Exception $e) {
+                // Abaikan error broadcast jika websocket tidak disetting, biar cron job tidak mati
+            }
+        }
     }
 }
