@@ -35,36 +35,31 @@ class User extends Authenticatable implements FilamentUser, HasName, CanResetPas
         return $this->email;
     }
 
-    // --- LOGIKA PINTU MASUK (MULTI PANEL) ---
+    /**
+     * LOGIKA KEAMANAN PINTU MASUK
+     * Method ini dipanggil otomatis oleh Filament setiap kali user membuka halaman panel.
+     */
     public function canAccessPanel(Panel $panel): bool
     {
-        // 1. Cek apakah user aktif?
-        if (!$this->is_active) {
+        // Jika user tidak aktif, tolak semua akses
+        // (Pastikan kolom 'is_active' ada di tabel Anda, atau hapus baris ini jika tidak pakai)
+        if ($this->is_active === 0) {
             return false;
         }
 
-        // 2. Logika Panel ADMIN (Super Admin & Verifikator)
-        if ($panel->getId() === 'admin') {
-            return $this->role === 'SUPER ADMIN';
-        }
+        // Ambil ID Panel yang sedang dicoba diakses
+        // Pastikan ID panel di PanelProvider Anda sesuai: 'admin', 'pengusul', 'verifikator', 'direksi'
+        $panelId = $panel->getId();
+        $role = $this->role; // ENUM: 'SUPER ADMIN', 'PENGUSUL', 'VERIFIKATOR', 'DIREKSI'
 
-        // 3. Logika Panel PENGUSUL
-        if ($panel->getId() === 'pengusul') {
-            return $this->role === 'PENGUSUL';
-        }
-
-        // 4. Logika Panel DIREKSI
-        if ($panel->getId() === 'direksi') {
-            return $this->role === 'DIREKSI';
-        }
-
-        // 5. Logika Panel VERIFIKATOR
-        if ($panel->getId() === 'verifikator') {
-            return $this->role === 'VERIFIKATOR';
-        }
-
-        // Default: Tolak akses
-        return false;
+        // Cocokkan ID Panel dengan Role User
+        return match($panelId) {
+            'admin'       => $role === 'SUPER ADMIN',
+            'pengusul'    => $role === 'PENGUSUL',
+            'verifikator' => $role === 'VERIFIKATOR',
+            'direksi'     => $role === 'DIREKSI',
+            default       => false, // Panel tidak dikenal, tolak akses
+        };
     }
 
     // --- AGAR NAMA MUNCUL DI POJOK KANAN ---

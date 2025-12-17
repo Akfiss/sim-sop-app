@@ -11,6 +11,10 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Widgets;
+use App\Http\Responses\LoginResponse;
+use Filament\Http\Responses\Auth\Contracts\LoginResponse as LoginResponseContract;
+use App\Http\Responses\LogoutResponse;
+use Filament\Http\Responses\Auth\Contracts\LogoutResponse as LogoutResponseContract;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -21,7 +25,6 @@ use App\Filament\SuperAdmin\Pages\Dashboard;
 use App\Filament\Auth\CustomLogin;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
 use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
 
 
@@ -79,5 +82,21 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->singleton(
+            LoginResponseContract::class,
+            LoginResponse::class
+        );
+
+        // 2. TAMBAHKAN INI (Kode Logout Baru)
+        $this->app->singleton(
+            LogoutResponseContract::class,
+            LogoutResponse::class
+        );
     }
 }

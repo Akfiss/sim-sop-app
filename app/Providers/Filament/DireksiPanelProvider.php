@@ -11,6 +11,10 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
+use App\Http\Responses\LoginResponse;
+use Filament\Http\Responses\Auth\Contracts\LoginResponse as LoginResponseContract;
+use App\Http\Responses\LogoutResponse;
+use Filament\Http\Responses\Auth\Contracts\LogoutResponse as LogoutResponseContract;
 use Filament\Support\Colors\Color;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -21,7 +25,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-use Swis\Filament\Backgrounds\ImageProviders\CuratedBySwis;
 use Filament\Pages\Auth\PasswordReset\RequestPasswordReset;
 
 class DireksiPanelProvider extends PanelProvider
@@ -76,5 +79,21 @@ class DireksiPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->singleton(
+            LoginResponseContract::class,
+            LoginResponse::class
+        );
+
+        // 2. TAMBAHKAN INI (Kode Logout Baru)
+        $this->app->singleton(
+            LogoutResponseContract::class,
+            LogoutResponse::class
+        );
     }
 }

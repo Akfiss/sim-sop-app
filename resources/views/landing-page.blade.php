@@ -8,7 +8,6 @@
     <link rel="icon" href="{{ asset('images/faviconlogo-rs.svg') }}" type="image/svg+xml">
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -47,9 +46,6 @@
                             '0%, 100%': { transform: 'translateY(0)' },
                             '50%': { transform: 'translateY(-20px)' },
                         }
-                    },
-                    backgroundImage: {
-                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
                     }
                 }
             }
@@ -79,18 +75,14 @@
             background: rgba(30, 41, 59, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
-
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
-        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 
     <script>
-        // Init Dark Mode
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -112,25 +104,19 @@
                 search: new URLSearchParams(window.location.search).get('search') || '',
                 direktoratId: new URLSearchParams(window.location.search).get('direktorat_id') || '',
                 unitId: new URLSearchParams(window.location.search).get('unit_id') || '',
-                currentPath: window.location.pathname + window.location.search, // Track path + query only
+                currentPath: window.location.pathname + window.location.search,
 
                 init() {
                     this.darkMode = localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-                    // --- 1. SEARCH DELAY LOGIC (DEBOUNCE) ---
-                    // Kita watch variabel 'search'. Karena di input pakai x-model.debounce.500ms,
-                    // maka watch ini baru akan jalan 500ms setelah user berhenti mengetik.
                     this.$watch('search', value => {
                         this.handleSearch();
                     });
 
-                    // Handle browser back/forward buttons
                     window.addEventListener('popstate', () => {
                         const newPath = window.location.pathname + window.location.search;
-                        // HANYA Reload jika Path atau Query berubah (bukan Hash #)
                         if (newPath !== this.currentPath) {
                             this.currentPath = newPath;
-                            // Update values from URL
                             this.search = new URLSearchParams(window.location.search).get('search') || '';
                             this.direktoratId = new URLSearchParams(window.location.search).get('direktorat_id') || '';
                             this.unitId = new URLSearchParams(window.location.search).get('unit_id') || '';
@@ -146,7 +132,6 @@
                     else document.documentElement.classList.remove('dark');
                 },
 
-                // --- SCROLL HELPERS (TANPA RELOAD) ---
                 scrollToTop() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
@@ -155,16 +140,14 @@
                     if(el) el.scrollIntoView({ behavior: 'smooth' });
                 },
 
-                // AJAX Fetch Logic
                 async updateResults(url = null, pushToHistory = true) {
                     this.isLoading = true;
-
-                    // Build URL if not provided
                     if (!url) {
                         const params = new URLSearchParams();
                         if (this.search) params.append('search', this.search);
                         if (this.direktoratId) params.append('direktorat_id', this.direktoratId);
                         if (this.unitId) params.append('unit_id', this.unitId);
+                        // FIX: Menggunakan nama route yang benar 'landing-page'
                         url = `{{ route('landing-page') }}?${params.toString()}`;
                     }
 
@@ -175,41 +158,30 @@
                         const html = await response.text();
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(html, 'text/html');
-
-                        // Replace Konten Daftar SOP (Termasuk Pagination di dalamnya)
                         const newList = doc.getElementById('dokumen-list');
+                        
                         if (newList) {
                             document.getElementById('dokumen-list').innerHTML = newList.innerHTML;
-
-                            // Penting: Refresh AOS agar animasi ulang (dan tidak hidden)
-                            setTimeout(() => {
-                                AOS.refreshHard();
-                            }, 200);
+                            setTimeout(() => { AOS.refreshHard(); }, 200);
 
                             if (pushToHistory) {
                                 window.history.pushState({}, '', url);
                                 this.currentPath = window.location.pathname + window.location.search;
                             }
 
-                            // Scroll sedikit ke atas list agar user tahu data berubah
-                            // Cek jika kita tidak sedang di bagian atas
                             const target = document.getElementById('dokumen');
                             if(target) {
-                                const offset = 80; // Navbar offset
+                                const offset = 80;
                                 const bodyRect = document.body.getBoundingClientRect().top;
                                 const elementRect = target.getBoundingClientRect().top;
                                 const elementPosition = elementRect - bodyRect;
                                 const offsetPosition = elementPosition - offset;
 
                                 if (window.pageYOffset > offsetPosition) {
-                                    window.scrollTo({
-                                        top: offsetPosition,
-                                        behavior: 'smooth'
-                                    });
+                                    window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
                                 }
                             }
                         }
-
                     } catch (error) {
                         console.error('Gagal memuat data:', error);
                     } finally {
@@ -217,30 +189,16 @@
                     }
                 },
 
-                handleSearch() {
-                    this.updateResults();
-                },
-
-                handleFilter(id) {
-                    this.direktoratId = id;
-                    this.updateResults();
-                },
-
-                handleFilterUnit(id) {
-                    this.unitId = id;
-                    this.updateResults();
-                },
-
+                handleSearch() { this.updateResults(); },
+                handleFilter(id) { this.direktoratId = id; this.updateResults(); },
+                handleFilterUnit(id) { this.unitId = id; this.updateResults(); },
                 handleReset() {
                     this.search = '';
                     this.direktoratId = '';
                     this.unitId = '';
                     this.updateResults();
                 },
-
-                // Handler Klik Pagination (Mencegah reload full)
                 handleMainClick(e) {
-                    // Cek apakah yang diklik adalah link pagination
                     const link = e.target.closest('#pagination-container a');
                     if (link && link.href) {
                         e.preventDefault();
@@ -252,13 +210,9 @@
     </script>
 
     <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <!-- New Aesthetic Background Image -->
         <div class="absolute inset-0 bg-[url('{{ asset('images/backgrounds/hero-bg.jpg') }}')] bg-cover bg-center bg-no-repeat opacity-10 dark:opacity-5 mix-blend-multiply dark:mix-blend-overlay filter blur-[1px]"></div>
         <div class="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-gray-50 dark:via-dark-900/50 dark:to-dark-900"></div>
-
-        <!-- 3D DNA Canvas Container -->
         <div id="dna-canvas-container" class="absolute inset-0 z-10 opacity-60 mix-blend-multiply dark:mix-blend-screen"></div>
-
         <div class="absolute top-0 left-1/4 w-96 h-96 bg-brand-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
         <div class="absolute top-0 right-1/4 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
         <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
@@ -282,7 +236,6 @@
 
                 <div class="hidden md:flex items-center space-x-1 p-1 bg-white/50 dark:bg-white/5 rounded-full backdrop-blur-md border border-gray-200/50 dark:border-white/5 shadow-sm">
                     <a href="{{ route('landing-page') }}" @click.prevent="scrollToTop()" class="px-5 py-2 text-sm font-semibold rounded-full text-brand-700 bg-brand-50 dark:text-brand-300 dark:bg-brand-900/30 transition-all cursor-pointer">Beranda</a>
-
                     <button @click="scrollToSection('fitur')" class="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Fitur</button>
                     <button @click="scrollToSection('dokumen')" class="px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Cari SOP</button>
                 </div>
@@ -293,19 +246,17 @@
                         <svg x-show="darkMode" x-cloak class="w-5 h-5 text-gray-300 group-hover:text-yellow-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                     </button>
 
-                    <div class="relative group" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
-                        <button class="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold text-sm shadow-lg hover:shadow-xl hover:translate-y-0.5 transition-all">
-                            <span>Akses Portal</span>
-                            <svg class="w-4 h-4 transition-transform duration-300" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                        <div x-show="open" x-transition class="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-800 rounded-xl shadow-xl border border-gray-100 dark:border-white/10 py-2 z-50">
-                            <a href="/pengusul" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 transition-colors">Login Pengusul</a>
-                            <a href="/verifikator" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 transition-colors">Login Verifikator</a>
-                            <a href="/direksi" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 transition-colors">Login Direksi</a>
-                            <div class="h-px bg-gray-100 dark:bg-white/10 my-1"></div>
-                            <a href="/admin" class="block px-4 py-2 text-sm font-bold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors">Login Admin</a>
-                        </div>
-                    </div>
+                    @auth
+                        <a href="{{ url('/login') }}" class="flex items-center gap-2 px-5 py-2 bg-brand-600 text-white rounded-lg font-semibold text-sm shadow-lg shadow-brand-500/30 hover:bg-brand-700 hover:-translate-y-0.5 transition-all">
+                            <span>Dashboard Saya</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                        </a>
+                    @else
+                        <a href="{{ route('login') }}" class="flex items-center gap-2 px-5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold text-sm shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
+                            <span>Masuk Aplikasi</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                        </a>
+                    @endauth
                 </div>
 
                 <div class="flex items-center gap-4 md:hidden">
@@ -323,15 +274,13 @@
         <div x-show="mobileMenuOpen" x-collapse class="md:hidden glass border-t border-gray-100 dark:border-white/5">
             <div class="px-4 py-4 space-y-2">
                 <a href="#beranda" @click="mobileMenuOpen = false; scrollToTop()" class="block px-4 py-3 rounded-lg bg-gray-50 dark:bg-white/5 text-brand-700 dark:text-brand-300 font-medium">Beranda</a>
-
                 <button @click="mobileMenuOpen = false; scrollToSection('fitur')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Fitur</button>
                 <button @click="mobileMenuOpen = false; scrollToSection('dokumen')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Cari SOP</button>
 
-                <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-white/10">
-                    <a href="/pengusul" class="text-center py-2.5 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-lg text-sm font-semibold">Pengusul</a>
-                    <a href="/verifikator" class="text-center py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-semibold">Verifikator</a>
-                    <a href="/direksi" class="text-center py-2.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 rounded-lg text-sm font-semibold">Direksi</a>
-                    <a href="/admin" class="text-center py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-sm font-bold">ADMIN</a>
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-white/10">
+                    <a href="{{ route('login') }}" class="block w-full text-center py-3 bg-brand-600 text-white rounded-xl font-bold text-sm shadow-lg">
+                        @auth Dashboard Saya @else Masuk Aplikasi @endauth
+                    </a>
                 </div>
             </div>
         </div>
@@ -339,7 +288,6 @@
 
     <header class="relative pt-32 pb-16 lg:pt-48 lg:pb-24 overflow-hidden z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
-
             <div data-aos="fade-down" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-100 dark:bg-brand-900/30 dark:border-brand-800/50 mb-8 backdrop-blur-sm">
                 <span class="flex h-2 w-2 relative">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
@@ -389,7 +337,7 @@
         </div>
     </header>
 
-     <section id="fitur" class="py-20 bg-gray-50 dark:bg-dark-900/50 relative overflow-hidden">
+    <section id="fitur" class="py-20 bg-gray-50 dark:bg-dark-900/50 relative overflow-hidden">
         <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div data-aos="fade-up" class="text-center mb-16">
@@ -453,27 +401,17 @@
                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </button>
-
                     <select x-model="direktoratId" class="hidden">
                         <option value="">Semua Direktorat</option>
                         @foreach($direktorats as $dir)
                             <option value="{{ $dir->id_direktorat }}">{{ $dir->nama_direktorat }}</option>
                         @endforeach
                     </select>
-
                     <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-dark-800 rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 max-h-80 overflow-y-auto custom-scrollbar">
                         <div class="p-2 space-y-1">
-                            <div @click="handleFilter(''); open = false"
-                                 class="px-4 py-3 rounded-xl cursor-pointer transition-colors"
-                                 :class="!direktoratId ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">
-                                Semua Direktorat
-                            </div>
+                            <div @click="handleFilter(''); open = false" class="px-4 py-3 rounded-xl cursor-pointer transition-colors" :class="!direktoratId ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">Semua Direktorat</div>
                             @foreach($direktorats as $dir)
-                            <div @click="handleFilter('{{ $dir->id_direktorat }}'); open = false"
-                                 class="px-4 py-3 rounded-xl cursor-pointer transition-colors"
-                                 :class="direktoratId == '{{ $dir->id_direktorat }}' ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">
-                                {{ $dir->nama_direktorat }}
-                            </div>
+                            <div @click="handleFilter('{{ $dir->id_direktorat }}'); open = false" class="px-4 py-3 rounded-xl cursor-pointer transition-colors" :class="direktoratId == '{{ $dir->id_direktorat }}' ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">{{ $dir->nama_direktorat }}</div>
                             @endforeach
                         </div>
                     </div>
@@ -490,27 +428,17 @@
                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </button>
-
                     <select x-model="unitId" class="hidden">
                         <option value="">Semua Unit Kerja</option>
                         @foreach($units as $unit)
                             <option value="{{ $unit->id_unit }}">{{ $unit->nama_unit }}</option>
                         @endforeach
                     </select>
-
                     <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-dark-800 rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 max-h-80 overflow-y-auto custom-scrollbar">
                         <div class="p-2 space-y-1">
-                            <div @click="handleFilterUnit(''); open = false"
-                                 class="px-4 py-3 rounded-xl cursor-pointer transition-colors"
-                                 :class="!unitId ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">
-                                Semua Unit Kerja
-                            </div>
+                            <div @click="handleFilterUnit(''); open = false" class="px-4 py-3 rounded-xl cursor-pointer transition-colors" :class="!unitId ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">Semua Unit Kerja</div>
                             @foreach($units as $unit)
-                            <div @click="handleFilterUnit('{{ $unit->id_unit }}'); open = false"
-                                 class="px-4 py-3 rounded-xl cursor-pointer transition-colors"
-                                 :class="unitId == '{{ $unit->id_unit }}' ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">
-                                {{ $unit->nama_unit }}
-                            </div>
+                            <div @click="handleFilterUnit('{{ $unit->id_unit }}'); open = false" class="px-4 py-3 rounded-xl cursor-pointer transition-colors" :class="unitId == '{{ $unit->id_unit }}' ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">{{ $unit->nama_unit }}</div>
                             @endforeach
                         </div>
                     </div>
@@ -652,10 +580,7 @@
                 <div>
                     <h4 class="text-white font-bold mb-6 text-lg">Akses Sistem</h4>
                     <ul class="space-y-3 text-sm">
-                        <li><a href="/pengusul" class="block p-3 rounded-xl bg-white/5 hover:bg-brand-500 hover:text-white transition-all duration-300 border border-white/5 text-center">Login Pengusul</a></li>
-                         <li><a href="/verifikator" class="block p-3 rounded-xl bg-white/5 hover:bg-blue-600 hover:text-white transition-all duration-300 border border-white/5 text-center">Login Verifikator</a></li>
-                         <li><a href="/direksi" class="block p-3 rounded-xl bg-white/5 hover:bg-purple-600 hover:text-white transition-all duration-300 border border-white/5 text-center">Login Direksi</a></li>
-                         <li><a href="/admin" class="flex items-center gap-2 text-gray-400 hover:text-white transition justify-end mt-4"><span class="text-xs font-mono">ADMIN ACCESS</span> <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg></a></li>
+                        <li><a href="{{ route('login') }}" class="block p-3 rounded-xl bg-white/5 hover:bg-brand-500 hover:text-white transition-all duration-300 border border-white/5 text-center">Masuk Aplikasi</a></li>
                     </ul>
                 </div>
             </div>
@@ -681,54 +606,35 @@
             easing: 'ease-out-cubic',
         });
 
-        // --- 3D DNA HELIX ANIMATION ---
+        // 3D DNA Animation Code (Same as previous, kept intact for functionality)
         document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('dna-canvas-container');
             if (!container) return;
-
             const scene = new THREE.Scene();
-            // Fog to fade it out into the background color (matches the theme)
-            // Light: 0xf9fafb (gray-50), Dark: 0x0f172a (dark-900) - we handle this dynamically or pick a middle ground
             scene.fog = new THREE.FogExp2(0xffffff, 0.05);
-
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-            
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
-
-            // DNA Group
             const dnaGroup = new THREE.Group();
             scene.add(dnaGroup);
-
-            // Create Particles
-            const count = 40; // Number of base pairs
+            const count = 40;
             const geometry = new THREE.SphereGeometry(0.2, 16, 16);
-            
-            // Material for styling - Theme Colors (Brand Green & Blue)
-            const material1 = new THREE.MeshBasicMaterial({ color: 0x10b981 }); // Brand-500
-            const material2 = new THREE.MeshBasicMaterial({ color: 0x3b82f6 }); // Blue-500
+            const material1 = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+            const material2 = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
             const lineMaterial = new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.3 });
-
-            // Generate Helix
             for (let i = 0; i < count; i++) {
                 const t = i * 0.5;
                 const x = Math.cos(t) * 2;
                 const z = Math.sin(t) * 2;
-                const y = i * 0.4 - (count * 0.4) / 2; // Center vertically
-
-                // Strand 1
+                const y = i * 0.4 - (count * 0.4) / 2;
                 const particle1 = new THREE.Mesh(geometry, material1);
                 particle1.position.set(x, y, z);
                 dnaGroup.add(particle1);
-
-                // Strand 2 (Offset by PI)
                 const particle2 = new THREE.Mesh(geometry, material2);
                 particle2.position.set(-x, y, -z);
                 dnaGroup.add(particle2);
-
-                // Connector Line
                 const points = [];
                 points.push(new THREE.Vector3(x, y, z));
                 points.push(new THREE.Vector3(-x, y, -z));
@@ -736,44 +642,30 @@
                 const line = new THREE.Line(lineGeometry, lineMaterial);
                 dnaGroup.add(line);
             }
-
-            // Position Camera and Helix
             camera.position.z = 12;
             camera.position.y = 0;
             camera.rotation.y = 0;
-
-            // Shift Helix to the right to clear text area
-            // On mobile (portrait), we might want it centered but pushed back, or hidden.
-            // For now, let's optimize for desktop aesthetics as requested.
             if (window.innerWidth > 768) {
-                dnaGroup.position.x = 6; // Move to the right
-                dnaGroup.rotation.z = Math.PI / 8; // Slight tilt
+                dnaGroup.position.x = 6;
+                dnaGroup.rotation.z = Math.PI / 8;
             } else {
-                dnaGroup.position.y = 4; // Move up on mobile to be like a header bg
+                dnaGroup.position.y = 4;
                 dnaGroup.scale.set(0.7, 0.7, 0.7);
             }
-
-            // Mouse Interaction
             let mouseX = 0;
             let mouseY = 0;
             let targetX = 0;
             let targetY = 0;
-
             const windowHalfX = window.innerWidth / 2;
             const windowHalfY = window.innerHeight / 2;
-
             document.addEventListener('mousemove', (event) => {
                 mouseX = (event.clientX - windowHalfX) * 0.001;
                 mouseY = (event.clientY - windowHalfY) * 0.001;
             });
-
-            // Handle Resize
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
-                
-                // Re-evaluate position on resize
                 if (window.innerWidth > 768) {
                      dnaGroup.position.x = 6;
                      dnaGroup.position.y = 0;
@@ -786,32 +678,18 @@
                      dnaGroup.rotation.z = 0;
                 }
             });
-
-            // Animation Loop
             const clock = new THREE.Clock();
-
             function animate() {
                 requestAnimationFrame(animate);
-
                 const elapsedTime = clock.getElapsedTime();
-
-                // Rotate Helix
                 dnaGroup.rotation.y += 0.005;
-                dnaGroup.rotation.z = Math.sin(elapsedTime * 0.5) * 0.1; // Gentle float
-
-                // Mouse Parallax
+                dnaGroup.rotation.z = Math.sin(elapsedTime * 0.5) * 0.1;
                 targetX = mouseX * 2;
                 targetY = mouseY * 2;
-                
                 dnaGroup.rotation.x += 0.05 * (targetY - dnaGroup.rotation.x);
-                dnaGroup.rotation.y += 0.05 * (targetX - dnaGroup.rotation.y); // Combine with auto-rotation
-
-                // Floating particles effect (optional background particles)
-                // ...
-
+                dnaGroup.rotation.y += 0.05 * (targetX - dnaGroup.rotation.y);
                 renderer.render(scene, camera);
             }
-
             animate();
         });
     </script>
