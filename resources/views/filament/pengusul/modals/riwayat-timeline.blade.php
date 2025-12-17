@@ -42,16 +42,13 @@
                         {{-- Dot Indicator --}}
                         <span @class([
                             'absolute -left-9 flex items-center justify-center w-6 h-6 rounded-full ring-4 ring-white dark:ring-gray-900',
-                            'bg-gray-400' => $riwayat->status_sop === 'DRAFT',
-                            'bg-yellow-500' => $riwayat->status_sop === 'DALAM REVIEW',
-                            'bg-red-500' => $riwayat->status_sop === 'REVISI',
                             'bg-green-500' => $riwayat->status_sop === 'AKTIF',
-                            'bg-gray-500' => in_array($riwayat->status_sop, ['KADALUARSA', 'ARCHIVED']),
+                            'bg-red-500' => $riwayat->status_sop === 'KADALUARSA',
                         ])>
-                            @if($index === 0)
-                                <x-heroicon-s-check class="w-3 h-3 text-black" />
+                            @if($riwayat->status_sop === 'AKTIF')
+                                <x-heroicon-s-check class="w-3 h-3 text-white" />
                             @else
-                                <span class="w-2 h-2 bg-white rounded-full"></span>
+                                <x-heroicon-s-x-mark class="w-3 h-3 text-white" />
                             @endif
                         </span>
 
@@ -59,17 +56,15 @@
                         <div @class([
                             'p-4 rounded-lg border',
                             'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700',
-                            'ring-2 ring-primary-500' => $index === 0,
+                            'ring-2 ring-green-500/20' => $riwayat->status_sop === 'AKTIF',
+                            'ring-2 ring-red-500/20' => $riwayat->status_sop === 'KADALUARSA',
                         ])>
                             {{-- Header --}}
                             <div class="flex items-center justify-between mb-2">
                                 <span @class([
                                     'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' => $riwayat->status_sop === 'DRAFT',
-                                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' => $riwayat->status_sop === 'DALAM REVIEW',
-                                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' => $riwayat->status_sop === 'REVISI',
                                     'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' => $riwayat->status_sop === 'AKTIF',
-                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' => in_array($riwayat->status_sop, ['KADALUARSA', 'ARCHIVED']),
+                                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' => $riwayat->status_sop === 'KADALUARSA',
                                 ])>
                                     {{ $riwayat->status_sop }}
                                 </span>
@@ -81,8 +76,9 @@
                             {{-- User Info --}}
                             <div class="flex items-center gap-2 mb-2">
                                 <x-heroicon-o-user-circle class="w-4 h-4 text-gray-400" />
-                                <span class="text-sm text-gray-700 dark:text-gray-300">
-                                    {{ $riwayat->user?->nama_lengkap ?? 'User tidak ditemukan' }}
+                                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                    {{-- Jika id_user null, berarti Sistem --}}
+                                    {{ $riwayat->user?->nama_lengkap ?? 'Sistem Otomatis' }}
                                 </span>
                             </div>
 
@@ -99,11 +95,11 @@
                             {{-- Dokumen Snapshot --}}
                             @if($riwayat->dokumen_path)
                                 <div class="mt-3">
-                                    <a href="{{ asset('storage/' . $riwayat->dokumen_path) }}" 
+                                    <a href="{{ asset('storage/' . $riwayat->dokumen_path) }}"
                                        target="_blank"
                                        class="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400">
                                         <x-heroicon-o-document-arrow-down class="w-4 h-4" />
-                                        Lihat Dokumen Snapshot
+                                        Lihat Arsip File
                                     </a>
                                 </div>
                             @endif

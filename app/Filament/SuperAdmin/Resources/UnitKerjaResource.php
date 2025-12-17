@@ -94,7 +94,7 @@ class UnitKerjaResource extends Resource
                 ])
                 ->icon('heroicon-m-ellipsis-vertical') // Ikon titik tiga
                 ->color('gray') // Warna ikon utama
-                ->tooltip('Menu Aksi') // Tooltip saat hover ikon grup
+                ->tooltip('Menu Aksi')
                 ->extraAttributes(['class' => 'w-auto min-w-[150px]']), // Lebar minimal agar tidak terlalu kecil
             ])
             ->bulkActions([

@@ -11,8 +11,9 @@ class LandingPageController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Ambil Data Direktorat
+        // 1. Ambil Data Direktorat & Unit Kerja
         $direktorats = Direktorat::all();
+        $units = \App\Models\UnitKerja::orderBy('nama_unit', 'asc')->get();
 
         // 2. Query Utama SOP
         $query = DokumenSop::query()
@@ -31,6 +32,10 @@ class LandingPageController extends Controller
             });
         }
 
+        if ($request->filled('unit_id')) {
+            $query->where('id_unit_pemilik', $request->unit_id);
+        }
+
         // 5. Pagination dengan Fragment (Agar tidak scroll ke atas)
         // Urutkan berdasarkan tanggal pengesahan (saat SOP disetujui & menjadi aktif)
         $sop_list = $query->orderBy('tgl_pengesahan', 'desc')
@@ -41,6 +46,7 @@ class LandingPageController extends Controller
         return view('landing-page', [
             'sop_list' => $sop_list,
             'direktorats' => $direktorats,
+            'units' => $units,
         ]);
     }
 }

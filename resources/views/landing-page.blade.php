@@ -111,6 +111,7 @@
                 isLoading: false,
                 search: new URLSearchParams(window.location.search).get('search') || '',
                 direktoratId: new URLSearchParams(window.location.search).get('direktorat_id') || '',
+                unitId: new URLSearchParams(window.location.search).get('unit_id') || '',
                 currentPath: window.location.pathname + window.location.search, // Track path + query only
 
                 init() {
@@ -132,6 +133,7 @@
                             // Update values from URL
                             this.search = new URLSearchParams(window.location.search).get('search') || '';
                             this.direktoratId = new URLSearchParams(window.location.search).get('direktorat_id') || '';
+                            this.unitId = new URLSearchParams(window.location.search).get('unit_id') || '';
                             this.updateResults(window.location.href, false);
                         }
                     });
@@ -159,9 +161,10 @@
 
                     // Build URL if not provided
                     if (!url) {
-                         const params = new URLSearchParams();
+                        const params = new URLSearchParams();
                         if (this.search) params.append('search', this.search);
                         if (this.direktoratId) params.append('direktorat_id', this.direktoratId);
+                        if (this.unitId) params.append('unit_id', this.unitId);
                         url = `{{ route('landing-page') }}?${params.toString()}`;
                     }
 
@@ -223,9 +226,15 @@
                     this.updateResults();
                 },
 
+                handleFilterUnit(id) {
+                    this.unitId = id;
+                    this.updateResults();
+                },
+
                 handleReset() {
                     this.search = '';
                     this.direktoratId = '';
+                    this.unitId = '';
                     this.updateResults();
                 },
 
@@ -243,6 +252,13 @@
     </script>
 
     <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <!-- New Aesthetic Background Image -->
+        <div class="absolute inset-0 bg-[url('{{ asset('images/backgrounds/hero-bg.jpg') }}')] bg-cover bg-center bg-no-repeat opacity-10 dark:opacity-5 mix-blend-multiply dark:mix-blend-overlay filter blur-[1px]"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-gray-50 dark:via-dark-900/50 dark:to-dark-900"></div>
+
+        <!-- 3D DNA Canvas Container -->
+        <div id="dna-canvas-container" class="absolute inset-0 z-10 opacity-60 mix-blend-multiply dark:mix-blend-screen"></div>
+
         <div class="absolute top-0 left-1/4 w-96 h-96 bg-brand-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
         <div class="absolute top-0 right-1/4 w-96 h-96 bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
         <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
@@ -391,10 +407,10 @@
                 </div>
                 <div data-aos="fade-up" data-aos-delay="200" class="group p-8 rounded-3xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 hover:border-blue-500/50 dark:hover:border-blue-500/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
                     <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center mb-6 text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition duration-300">
-                        <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Verifikasi Online</h3>
-                    <p class="text-gray-500 dark:text-gray-400 leading-relaxed text-sm">Alur persetujuan yang sistematis dan tercatat dari unit hingga direksi.</p>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Filter Spesifik</h3>
+                    <p class="text-gray-500 dark:text-gray-400 leading-relaxed text-sm">Temukan dokumen dengan mudah menggunakan filter Direktorat dan Unit Kerja yang presisi.</p>
                 </div>
                 <div data-aos="fade-up" data-aos-delay="300" class="group p-8 rounded-3xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 hover:border-purple-500/50 dark:hover:border-purple-500/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
                     <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-pink-600 flex items-center justify-center mb-6 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition duration-300">
@@ -426,13 +442,13 @@
                            placeholder="Cari SOP berdasarkan judul atau nomor SK...">
                 </div>
 
-                <div class="w-full lg:w-1/3 relative" x-data="{ open: false }">
+                <div class="w-full lg:w-1/4 relative" x-data="{ open: false }">
                     <button @click="open = !open" @click.outside="open = false" type="button"
                             class="block w-full pl-14 pr-10 py-5 text-left text-base border-2 border-transparent bg-gray-50 dark:bg-dark-800 text-gray-900 dark:text-white rounded-2xl focus:outline-none focus:border-brand-500 focus:bg-white dark:focus:bg-dark-900 transition-all shadow-inner relative">
                         <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                             <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                         </div>
-                        <span x-text="direktoratId ? document.querySelector(`option[value='${direktoratId}']`)?.text?.trim() : 'Semua Direktorat'"></span>
+                        <span x-text="direktoratId ? document.querySelector(`option[value='${direktoratId}']`)?.text?.trim() : 'Semua Direktorat'" class="line-clamp-1"></span>
                         <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none transition-transform duration-300" :class="open ? 'rotate-180' : ''">
                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
@@ -463,7 +479,44 @@
                     </div>
                 </div>
 
-                <div x-show="search || direktoratId" x-transition class="flex-shrink-0">
+                <div class="w-full lg:w-1/4 relative" x-data="{ open: false }">
+                    <button @click="open = !open" @click.outside="open = false" type="button"
+                            class="block w-full pl-14 pr-10 py-5 text-left text-base border-2 border-transparent bg-gray-50 dark:bg-dark-800 text-gray-900 dark:text-white rounded-2xl focus:outline-none focus:border-brand-500 focus:bg-white dark:focus:bg-dark-900 transition-all shadow-inner relative">
+                        <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                            <svg class="h-6 w-6 text-gray-400" fill="none" class="w-6 h-6" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        </div>
+                        <span x-text="unitId ? document.querySelector(`option[value='${unitId}']`)?.text?.trim() : 'Semua Unit Kerja'" class="line-clamp-1"></span>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none transition-transform duration-300" :class="open ? 'rotate-180' : ''">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </button>
+
+                    <select x-model="unitId" class="hidden">
+                        <option value="">Semua Unit Kerja</option>
+                        @foreach($units as $unit)
+                            <option value="{{ $unit->id_unit }}">{{ $unit->nama_unit }}</option>
+                        @endforeach
+                    </select>
+
+                    <div x-show="open" x-transition class="absolute z-50 w-full mt-2 bg-white dark:bg-dark-800 rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 max-h-80 overflow-y-auto custom-scrollbar">
+                        <div class="p-2 space-y-1">
+                            <div @click="handleFilterUnit(''); open = false"
+                                 class="px-4 py-3 rounded-xl cursor-pointer transition-colors"
+                                 :class="!unitId ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">
+                                Semua Unit Kerja
+                            </div>
+                            @foreach($units as $unit)
+                            <div @click="handleFilterUnit('{{ $unit->id_unit }}'); open = false"
+                                 class="px-4 py-3 rounded-xl cursor-pointer transition-colors"
+                                 :class="unitId == '{{ $unit->id_unit }}' ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-semibold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">
+                                {{ $unit->nama_unit }}
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="search || direktoratId || unitId" x-transition class="flex-shrink-0">
                     <button @click="handleReset()" type="button" class="w-full lg:w-auto px-6 py-5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-2xl hover:bg-red-100 dark:hover:bg-red-900/40 transition text-center flex items-center justify-center tooltip group" title="Reset Filter">
                         <span class="mr-2 lg:hidden">Reset</span>
                         <svg class="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -618,6 +671,7 @@
         </div>
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
         AOS.init({
@@ -625,6 +679,140 @@
             offset: 50,
             duration: 800,
             easing: 'ease-out-cubic',
+        });
+
+        // --- 3D DNA HELIX ANIMATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('dna-canvas-container');
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            // Fog to fade it out into the background color (matches the theme)
+            // Light: 0xf9fafb (gray-50), Dark: 0x0f172a (dark-900) - we handle this dynamically or pick a middle ground
+            scene.fog = new THREE.FogExp2(0xffffff, 0.05);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
+            container.appendChild(renderer.domElement);
+
+            // DNA Group
+            const dnaGroup = new THREE.Group();
+            scene.add(dnaGroup);
+
+            // Create Particles
+            const count = 40; // Number of base pairs
+            const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+            
+            // Material for styling - Theme Colors (Brand Green & Blue)
+            const material1 = new THREE.MeshBasicMaterial({ color: 0x10b981 }); // Brand-500
+            const material2 = new THREE.MeshBasicMaterial({ color: 0x3b82f6 }); // Blue-500
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.3 });
+
+            // Generate Helix
+            for (let i = 0; i < count; i++) {
+                const t = i * 0.5;
+                const x = Math.cos(t) * 2;
+                const z = Math.sin(t) * 2;
+                const y = i * 0.4 - (count * 0.4) / 2; // Center vertically
+
+                // Strand 1
+                const particle1 = new THREE.Mesh(geometry, material1);
+                particle1.position.set(x, y, z);
+                dnaGroup.add(particle1);
+
+                // Strand 2 (Offset by PI)
+                const particle2 = new THREE.Mesh(geometry, material2);
+                particle2.position.set(-x, y, -z);
+                dnaGroup.add(particle2);
+
+                // Connector Line
+                const points = [];
+                points.push(new THREE.Vector3(x, y, z));
+                points.push(new THREE.Vector3(-x, y, -z));
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                dnaGroup.add(line);
+            }
+
+            // Position Camera and Helix
+            camera.position.z = 12;
+            camera.position.y = 0;
+            camera.rotation.y = 0;
+
+            // Shift Helix to the right to clear text area
+            // On mobile (portrait), we might want it centered but pushed back, or hidden.
+            // For now, let's optimize for desktop aesthetics as requested.
+            if (window.innerWidth > 768) {
+                dnaGroup.position.x = 6; // Move to the right
+                dnaGroup.rotation.z = Math.PI / 8; // Slight tilt
+            } else {
+                dnaGroup.position.y = 4; // Move up on mobile to be like a header bg
+                dnaGroup.scale.set(0.7, 0.7, 0.7);
+            }
+
+            // Mouse Interaction
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
+
+            const windowHalfX = window.innerWidth / 2;
+            const windowHalfY = window.innerHeight / 2;
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = (event.clientX - windowHalfX) * 0.001;
+                mouseY = (event.clientY - windowHalfY) * 0.001;
+            });
+
+            // Handle Resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                
+                // Re-evaluate position on resize
+                if (window.innerWidth > 768) {
+                     dnaGroup.position.x = 6;
+                     dnaGroup.position.y = 0;
+                     dnaGroup.scale.set(1, 1, 1);
+                     dnaGroup.rotation.z = Math.PI / 8;
+                } else {
+                     dnaGroup.position.x = 0;
+                     dnaGroup.position.y = 4;
+                     dnaGroup.scale.set(0.7, 0.7, 0.7);
+                     dnaGroup.rotation.z = 0;
+                }
+            });
+
+            // Animation Loop
+            const clock = new THREE.Clock();
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                const elapsedTime = clock.getElapsedTime();
+
+                // Rotate Helix
+                dnaGroup.rotation.y += 0.005;
+                dnaGroup.rotation.z = Math.sin(elapsedTime * 0.5) * 0.1; // Gentle float
+
+                // Mouse Parallax
+                targetX = mouseX * 2;
+                targetY = mouseY * 2;
+                
+                dnaGroup.rotation.x += 0.05 * (targetY - dnaGroup.rotation.x);
+                dnaGroup.rotation.y += 0.05 * (targetX - dnaGroup.rotation.y); // Combine with auto-rotation
+
+                // Floating particles effect (optional background particles)
+                // ...
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
         });
     </script>
 </body>

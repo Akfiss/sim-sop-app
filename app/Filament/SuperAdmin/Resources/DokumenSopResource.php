@@ -32,18 +32,14 @@ class DokumenSopResource extends Resource
                         Forms\Components\TextInput::make('judul_sop')
                             ->required()
                             ->maxLength(255),
-                        
+
                         Forms\Components\TextInput::make('nomor_sk')
                             ->maxLength(50),
 
                         Forms\Components\Select::make('status')
                             ->options([
-                                'DRAFT' => 'Draft',
-                                'DALAM REVIEW' => 'Dalam Review',
-                                'REVISI' => 'Revisi',
                                 'AKTIF' => 'Aktif',
                                 'KADALUARSA' => 'Kadaluarsa',
-                                'ARCHIVED' => 'Diarsipkan (Non-Aktif)',
                             ])
                             ->required(),
 
@@ -76,10 +72,6 @@ class DokumenSopResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'AKTIF' => 'success',
-                        'DALAM REVIEW' => 'warning',
-                        'ARCHIVED' => 'gray',
-                        'DRAFT' => 'gray',
-                        'REVISI' => 'danger',
                         'KADALUARSA' => 'danger',
                         default => 'info',
                     }),
@@ -92,53 +84,14 @@ class DokumenSopResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'AKTIF' => 'Aktif',
-                        'ARCHIVED' => 'Arsip',
-                        'DALAM REVIEW' => 'Review',
+                        'KADALUARSA' => 'Kadaluarsa',
                     ]),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    
+
                     // 1. EDIT DATA
                     Tables\Actions\EditAction::make(), // Mengembalikan Edit Action standard
-
-                    // 2. ARSIPKAN (SOFT ACTION - STATUS ONLY)
-                    Tables\Actions\Action::make('archive')
-                        ->label('Arsipkan (Non-Aktifkan)')
-                        ->icon('heroicon-o-archive-box')
-                        ->color('warning')
-                        ->requiresConfirmation()
-                        ->modalHeading('Arsipkan Dokumen ini?')
-                        ->modalDescription('Dokumen akan dinonaktifkan (status Archived) dan tidak berlaku lagi, namun data tetap tersimpan dalam sistem.')
-                        ->modalSubmitActionLabel('Ya, Arsipkan')
-                        ->action(function (DokumenSop $record) {
-                            $record->update(['status' => 'ARCHIVED']);
-                            
-                            Notification::make()
-                                ->title('Dokumen berhasil diarsipkan')
-                                ->success()
-                                ->send();
-                        })
-                        ->visible(fn (DokumenSop $record) => $record->status !== 'ARCHIVED' && !$record->trashed()),
-
-                    // 3. AKTIFKAN KEMBALI (UNARCHIVE)
-                    Tables\Actions\Action::make('unarchive')
-                        ->label('Aktifkan Kembali')
-                        ->icon('heroicon-o-arrow-path')
-                        ->color('success')
-                        ->requiresConfirmation()
-                        ->modalHeading('Aktifkan Kembali Dokumen ini?')
-                        ->modalDescription('Dokumen akan dikembalikan ke status AKTIF.')
-                        ->modalSubmitActionLabel('Ya, Aktifkan')
-                        ->action(function (DokumenSop $record) {
-                            $record->update(['status' => 'AKTIF']);
-                            
-                            Notification::make()
-                                ->title('Dokumen berhasil diaktifkan kembali')
-                                ->success()
-                                ->send();
-                        })
-                        ->visible(fn (DokumenSop $record) => $record->status === 'ARCHIVED' && !$record->trashed()),
 
                     // 4. SOFT DELETE (HAPUS KE SAMPAH)
                     Tables\Actions\DeleteAction::make()
@@ -173,7 +126,9 @@ class DokumenSopResource extends Resource
                             }
                         }),
 
-                ])->icon('heroicon-m-ellipsis-vertical'),
+                ])
+                ->tooltip('Menu Aksi')
+                ->icon('heroicon-m-ellipsis-vertical'),
             ])
             ->defaultSort('created_at', 'desc');
     }

@@ -3,45 +3,63 @@
 namespace App\Filament\Pengusul\Resources;
 
 use App\Filament\Pengusul\Resources\RiwayatSopResource\Pages;
-use App\Models\DokumenSop;
-use App\Models\RiwayatSop;
+use App\Models\DokumenSop; // Note: The Resource model is DokumenSop, but we show History actions
 use Filament\Forms\Form;
-use Filament\Infolists;
-use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class RiwayatSopResource extends Resource
 {
-    protected static ?string $model = DokumenSop::class;
+    protected static ?string $model = DokumenSop::class; // We list SOPs, then show history in modal
 
-    // --- KONFIGURASI MENU ---
     protected static ?string $navigationIcon = 'heroicon-o-clock';
     protected static ?string $navigationLabel = 'Riwayat SOP';
     protected static ?string $pluralModelLabel = 'Riwayat SOP';
     protected static ?string $navigationGroup = 'Daftar Lengkap SOP';
-    protected static ?int $navigationSort = 3;
-    protected static ?string $slug = 'riwayat-sop';
+    protected static ?int $navigationSort = 2;
 
-    // --- FILTER DATA (HANYA SOP MILIK PENGUSUL) ---
+    // --- LOGIC UTAMA: FILTER DATA (HANYA UNIT TERKAIT/PEMILIK) ---
     public static function getEloquentQuery(): Builder
     {
+        $user = Auth::user();
+
+        // 1. Ambil ID Unit milik User Pengusul (via tabel pivot tb_unit_user)
+        $unitIds = DB::table('tb_unit_user')
+            ->where('id_user', $user->id_user)
+            ->pluck('id_unit')
+            ->toArray();
+
+        // 2. Filter SOP: Milik Unit Sendiri ATAU Unit Terkait ATAU All Units
+        // DAN hanya SOP yang punya history (riwayat)
         return parent::getEloquentQuery()
-            ->where('created_by', Auth::user()->id_user)
-            ->whereHas('riwayat') // Hanya tampilkan SOP yang memiliki riwayat
+            ->whereHas('riwayat') // Hanya tampilkan jika ada history
+            ->where(function (Builder $query) use ($unitIds) {
+                // A. Milik Unit Sendiri
+                $query->whereIn('id_unit_pemilik', $unitIds)
+
+                // B. ATAU SOP AP (Lintas Unit) / All Units
+                ->orWhere(function (Builder $q) use ($unitIds) {
+                    $q->where('kategori_sop', 'SOP_AP')
+                      ->where(function ($subQ) use ($unitIds) {
+                          $subQ->whereHas('unitTerkait', function ($relasi) use ($unitIds) {
+                              $relasi->whereIn('tb_unit_kerja.id_unit', $unitIds);
+                          })
+                          ->orWhere('is_all_units', true);
+                      });
+                });
+            })
             ->withoutGlobalScopes();
     }
 
-    // --- FORM (TIDAK DIGUNAKAN, VIEW ONLY) ---
     public static function form(Form $form): Form
     {
         return $form->schema([]);
     }
 
-    // --- TABEL DAFTAR SOP ---
     public static function table(Table $table): Table
     {
         return $table
@@ -53,7 +71,7 @@ class RiwayatSopResource extends Resource
                     ->sortable()
                     ->limit(50)
                     ->weight('bold')
-                    ->description(fn (DokumenSop $record) => $record->nomor_sk ?? 'Tanpa Nomor SK'),
+                    ->description(fn (DokumenSop $record) => $record->nomor_sk ?? '-'),
 
                 // 2. Kategori
                 Tables\Columns\TextColumn::make('kategori_sop')
@@ -69,12 +87,8 @@ class RiwayatSopResource extends Resource
                     ->label('Status Terkini')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'DRAFT' => 'gray',
-                        'DALAM REVIEW' => 'warning',
-                        'REVISI' => 'danger',
                         'AKTIF' => 'success',
-                        'KADALUARSA' => 'gray',
-                        'ARCHIVED' => 'gray',
+                        'KADALUARSA' => 'danger',
                         default => 'gray',
                     }),
 
@@ -83,41 +97,42 @@ class RiwayatSopResource extends Resource
                     ->label('Total Riwayat')
                     ->counts('riwayat')
                     ->badge()
-                    ->color('info')
+                    ->color('primary')
                     ->suffix(' perubahan'),
 
                 // 5. Terakhir Diubah
                 Tables\Columns\TextColumn::make('updated_at')
-                    ->label('Terakhir Diubah')
+                    ->label('Terakhir Update')
                     ->dateTime('d M Y, H:i')
                     ->sortable()
-                    ->color('gray'),
+                    ->color('gray')
+                    ->toggleable(),
             ])
             ->defaultSort('updated_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'DRAFT' => 'Draft',
-                        'DALAM REVIEW' => 'Dalam Review',
-                        'REVISI' => 'Revisi',
                         'AKTIF' => 'Aktif',
                         'KADALUARSA' => 'Kadaluarsa',
-                        'ARCHIVED' => 'Archived',
                     ]),
             ])
             ->actions([
-                // Tombol Lihat Riwayat
+                // --- ACTION LIHAT RIWAYAT (MODAL) ---
                 Tables\Actions\Action::make('lihat_riwayat')
-                    ->label('Lihat Riwayat')
+                    ->label('Detail Riwayat')
                     ->icon('heroicon-o-clock')
-                    ->color('primary')
+                    ->color('info')
                     ->modalHeading(fn (DokumenSop $record) => 'Riwayat: ' . $record->judul_sop)
                     ->modalWidth('5xl')
-                    ->modalSubmitAction(false)
+                    ->modalSubmitAction(false) // Tombol submit disembunyikan (view only)
                     ->modalCancelActionLabel('Tutup')
+                    // Memanggil View Blade yang sama (Re-use code)
                     ->modalContent(fn (DokumenSop $record) => view('filament.pengusul.modals.riwayat-timeline', [
                         'record' => $record,
-                        'riwayatList' => $record->riwayat()->with('user')->orderBy('created_at', 'desc')->get(),
+                        'riwayatList' => $record->riwayat()
+                            ->with('user')
+                            ->orderBy('created_at', 'desc')
+                            ->get(),
                     ])),
             ])
             ->paginated([10, 25, 50]);
