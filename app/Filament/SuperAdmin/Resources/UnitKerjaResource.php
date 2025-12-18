@@ -32,15 +32,13 @@ class UnitKerjaResource extends Resource
                     ->maxLength(10)
                     ->disabled()
                     ->placeholder('Otomatis membuat id unit')
-                    ->unique(ignoreRecord: true)
-                    ->disabledOn('edit'),
+                    ->unique(ignoreRecord: true),
 
                 // 2. Input Nama Unit
                 Forms\Components\TextInput::make('nama_unit')
                     ->label('Nama Unit Kerja')
                     ->required()
                     ->maxLength(50)
-                    ->disabledOn('edit')
                     ->unique(ignoreRecord: true),
 
                 // 3. Dropdown Pilih Direktorat (Relasi)

@@ -31,7 +31,6 @@ class DirektoratResource extends Resource
                     ->label('Kode Direktorat')
                     ->maxLength(10)
                     ->disabled()
-                    ->disabledOn('edit')
                     ->placeholder('Otomatis membuat id direktorat')
                     ->unique(ignoreRecord: true),
 
