@@ -34,7 +34,7 @@ class VerifikatorPanelProvider extends PanelProvider
         return $panel
             ->id('verifikator')
             ->path('verifikator')
-            ->login(CustomLogin::class)
+            // ->login(CustomLogin::class)
             ->passwordReset(RequestPasswordReset::class)
             ->emailVerification()
             ->colors([

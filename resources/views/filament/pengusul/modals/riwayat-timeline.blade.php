@@ -10,11 +10,8 @@
                 <p class="text-sm text-gray-500 dark:text-gray-400">Status Terkini</p>
                 <span @class([
                     'inline-flex items-center rounded-full px-3 py-1 text-sm font-medium',
-                    'bg-gray-100 text-gray-800' => $record->status === 'DRAFT',
-                    'bg-yellow-100 text-yellow-800' => $record->status === 'DALAM REVIEW',
-                    'bg-red-100 text-red-800' => $record->status === 'REVISI',
+                    'bg-red-100 text-red-800' => $record->status === 'KADALUARSA',
                     'bg-green-100 text-green-800' => $record->status === 'AKTIF',
-                    'bg-gray-100 text-gray-600' => in_array($record->status, ['KADALUARSA', 'ARCHIVED']),
                 ])>
                     {{ $record->status }}
                 </span>
@@ -41,7 +38,7 @@
                     <div class="mb-6 ml-6 relative">
                         {{-- Dot Indicator --}}
                         <span @class([
-                            'absolute -left-9 flex items-center justify-center w-6 h-6 rounded-full ring-4 ring-white dark:ring-gray-900',
+                            'absolute -left-9 flex items-center justify-center w-6 h-6 rounded-full ring-4 ring-gray-900 dark:ring-gray-900',
                             'bg-green-500' => $riwayat->status_sop === 'AKTIF',
                             'bg-red-500' => $riwayat->status_sop === 'KADALUARSA',
                         ])>

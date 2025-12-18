@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class DokumenSop extends Model
 {
@@ -28,7 +29,7 @@ class DokumenSop extends Model
         'id_unit_pemilik', 'created_by', 'updated_by', 'deleted_by'
     ];
 
-    // Otomatis Generate ID saat Create (agar user tidak perlu isi ID manual)
+    // --- 1. LOGIC OTOMATIS SAAT CREATE (GENERATE ID) ---
     protected static function boot()
     {
         parent::boot();
@@ -53,7 +54,6 @@ class DokumenSop extends Model
     }
 
     // Relasi SOP AP - Unit Terkait (Many to Many)
-    // Lewat tabel pivot: tb_sop_unit_terkait
     public function unitTerkait()
     {
         return $this->belongsToMany(

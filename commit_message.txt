@@ -1,0 +1,26 @@
+feat: Implement Real-time SOP Summarization & UI/UX Improvements
+
+This commit introduces a real-time summarization feature for SOP documents using the Google Gemini API, along with significant UI/UX enhancements and bug fixes.
+
+**Key Changes:**
+
+1.  **Backend Implementation (`LandingPageController.php`)**:
+    *   Integrated Google Gemini API (`gemini-2.5-flash` model) for on-the-fly SOP summarization.
+    *   Implemented robust PDF text extraction with `smalot/pdfparser`.
+    *   Added error handling for:
+        *   Text too short (detects scanned PDFs vs text PDFs).
+        *   API connection failures.
+        *   API key validation.
+    *   Configured prompt engineering to output clean, list-based HTML summaries.
+
+2.  **Frontend Enhancements (`landing-page.blade.php`)**:
+    *   **Summarize Button**: Redesigned to a minimalist text + sparkle icon button at the top-right of SOP cards.
+    *   **Modal UI**: Implemented a modern "Glassmorphism" design with a gradient header and shimmer loading animation.
+    *   **Scroll Logic**: Fixed body scroll locking when the modal is open/closed using Alpine.js `$watch`.
+    *   **Filters**: Implemented dependent dropdowns where selecting a "Direktorat" automatically filters the "Unit Kerja" dropdown options.
+
+3.  **Refactoring**:
+    *   Cleaned up Blade templates.
+    *   Updated `web.php` routes for the new summarization endpoint.
+
+**Note**: This update requires a valid `GOOGLE_AI_API_KEY` in the `.env` file.

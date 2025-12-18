@@ -18,3 +18,6 @@ Route::get('/lupa-password', [ForgotPasswordController::class, 'showLinkRequestF
 Route::post('/lupa-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
 Route::get('/reset-password/{token}', [ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
 Route::post('/reset-password', [ForgotPasswordController::class, 'reset'])->name('password.update');
+
+// Route AJAX Summarize (Letakkan sebelum atau sesudah route landing page)
+Route::get('/sop/{id}/summarize', [LandingPageController::class, 'summarize'])->name('sop.summarize');

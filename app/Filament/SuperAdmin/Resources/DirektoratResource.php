@@ -29,16 +29,18 @@ class DirektoratResource extends Resource
                 // Input ID Direktorat (Manual karena CHAR)
                 Forms\Components\TextInput::make('id_direktorat')
                     ->label('Kode Direktorat')
-                    ->maxLength(5)
+                    ->maxLength(10)
                     ->disabled()
-                    ->placeholder('Otomatis membuat id direktorat')  
+                    ->disabledOn('edit')
+                    ->placeholder('Otomatis membuat id direktorat')
                     ->unique(ignoreRecord: true),
 
                 // Input Nama Direktorat
                 Forms\Components\TextInput::make('nama_direktorat')
                     ->label('Nama Direktorat')
                     ->required()
-                    ->maxLength(100),
+                    ->maxLength(100)
+                    ->unique(ignoreRecord: true),
             ]);
     }
 

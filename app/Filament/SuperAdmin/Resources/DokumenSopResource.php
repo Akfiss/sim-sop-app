@@ -56,6 +56,7 @@ class DokumenSopResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+        ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('judul_sop')
                     ->searchable()
@@ -89,43 +90,35 @@ class DokumenSopResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-
-                    // 1. EDIT DATA
-                    Tables\Actions\EditAction::make(), // Mengembalikan Edit Action standard
-
-                    // 4. SOFT DELETE (HAPUS KE SAMPAH)
+                    // 4. Delete
                     Tables\Actions\DeleteAction::make()
-                        ->label('Hapus (Sampah)')
-                        ->modalHeading('Pindahkan ke Sampah?')
-                        ->modalDescription('Data akan dipindahkan ke sampah (Soft Delete) dan bisa dipulihkan. File tidak akan dihapus.'),
-
-                    // 5. RESTORE (PULIHKAN DARI SAMPAH)
-                    Tables\Actions\RestoreAction::make()
-                        ->label('Pulihkan')
+                        ->label('Hapus')
+                        ->tooltip('Hapus Data')
+                        ->modalHeading('Hapus Dokumen SOP')
+                        ->modalWidth('4xl')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
                         ->after(function (DokumenSop $record) {
-                            // Log History
                             RiwayatSop::create([
                                 'id_sop' => $record->id_sop,
-                                'id_user' => Auth::id(),
-                                'status_sop' => 'AKTIF', // Kembali aktif
-                                'catatan' => 'Dokumen dipulihkan dari sampah oleh Admin.',
-                                'dokumen_path' => $record->file_path
+                                'id_user' => Auth::user()->id_user,
+                                'status_sop' => 'KADALUARSA', // Kita anggap saat dihapus statusnya non-aktif (Kadaluarsa/Arsip)
+                                'catatan' => 'Dokumen dipindahkan ke sampah (Soft Delete) oleh Admin.',
+                                'dokumen_path' => $record->file_path,
                             ]);
                         }),
 
-                    // 6. HARD DELETE (HAPUS PERMANEN)
-                    Tables\Actions\ForceDeleteAction::make()
-                        ->label('Hapus Permanen')
-                        ->icon('heroicon-o-x-circle')
-                        ->modalHeading('Hapus Dokumen Secara Permanen?')
-                        ->modalDescription('PERINGATAN: Tindakan ini akan menghapus data DAN FILE dari sistem selamanya. Data History juga akan ikut terhapus.')
-                        ->before(function (DokumenSop $record) {
-                            // Hapus file fisik
-                            if ($record->file_path) {
-                                Storage::disk('public')->delete($record->file_path);
-                            }
-                        }),
-
+                    // 5. Restore (Pulihkan dari Sampah)
+                    Tables\Actions\RestoreAction::make()
+                    ->after(function (DokumenSop $record) {
+                        RiwayatSop::create([
+                            'id_sop' => $record->id_sop,
+                            'id_user' => Auth::user()->id_user,
+                            'status_sop' => $record->status,
+                            'catatan' => 'Dokumen dipulihkan dari sampah (Restore) oleh Admin.',
+                            'dokumen_path' => $record->file_path,
+                        ]);
+                    }),
                 ])
                 ->tooltip('Menu Aksi')
                 ->icon('heroicon-m-ellipsis-vertical'),

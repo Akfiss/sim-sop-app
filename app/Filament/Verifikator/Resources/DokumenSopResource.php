@@ -22,7 +22,7 @@ class DokumenSopResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-check';
     protected static ?string $navigationLabel = 'Verifikasi SOP';
-    protected static ?string $pluralModelLabel = 'Manajemen SOP';
+    protected static ?string $pluralModelLabel = 'Verifikasi SOP';
     protected static ?string $navigationGroup = 'Manajemen SOP';
     protected static ?int $navigationSort = 1;
 
@@ -435,15 +435,29 @@ class DokumenSopResource extends Resource
                                 'id_sop' => $record->id_sop,
                                 'id_user' => Auth::user()->id_user,
                                 'status_sop' => 'KADALUARSA', // Kita anggap saat dihapus statusnya non-aktif (Kadaluarsa/Arsip)
-                                'catatan' => 'Dokumen dinonaktifkan sementara (dimasukkan ke sampah) oleh Verifikator.',
+                                'catatan' => 'Dokumen dipindahkan ke sampah (Soft Delete) oleh Verifikator.',
                                 'dokumen_path' => $record->file_path,
                             ]);
                         }),
+
+                    // 5. Restore (Pulihkan dari Sampah)
+                    Tables\Actions\RestoreAction::make()
+                    ->after(function (DokumenSop $record) {
+                        // Logika Manual: Catat Log Setelah Berhasil Restore
+                        RiwayatSop::create([
+                            'id_sop' => $record->id_sop,
+                            'id_user' => Auth::user()->id_user,
+                            'status_sop' => $record->status,
+                            'catatan' => 'Dokumen dipulihkan dari sampah (Restore) oleh Verifikator.',
+                            'dokumen_path' => $record->file_path,
+                        ]);
+                    }),
                 ])
                 ->icon('heroicon-m-ellipsis-vertical') // Ikon titik tiga
                 ->color('primary') // Warna ikon utama
                 ->tooltip('Menu Aksi') // Tooltip saat hover ikon grup
-                ->extraAttributes(['class' => 'w-auto min-w-[150px]']),
+
+              ->extraAttributes(['class' => 'w-auto min-w-[150px]']),
             ])
             ->defaultSort('created_at', 'desc')
             ->bulkActions([

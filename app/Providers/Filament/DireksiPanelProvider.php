@@ -34,7 +34,7 @@ class DireksiPanelProvider extends PanelProvider
         return $panel
             ->id('direksi')
             ->path('direksi')
-            ->login(CustomLogin::class)
+            // ->login(CustomLogin::class)
             ->passwordReset(RequestPasswordReset::class)
             ->emailVerification()
             ->colors([

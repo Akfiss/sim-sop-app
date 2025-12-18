@@ -36,7 +36,7 @@ class PengusulPanelProvider extends PanelProvider
         return $panel
             ->id('pengusul')
             ->path('pengusul')
-            ->login(CustomLogin::class)
+            // ->login(CustomLogin::class)
             ->passwordReset(RequestPasswordReset::class)
             ->emailVerification()
             ->colors([

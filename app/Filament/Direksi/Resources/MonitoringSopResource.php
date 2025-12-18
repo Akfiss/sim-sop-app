@@ -2,9 +2,8 @@
 
 namespace App\Filament\Direksi\Resources;
 
-use App\Filament\Direksi\Resources\DokumenSopResource\Pages;
+use App\Filament\Direksi\Resources\MonitoringSopResource\Pages;
 use App\Models\DokumenSop;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -12,47 +11,32 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
-use Filament\Infolists; // Untuk fitur View/Mata
+use Filament\Infolists;
 use Filament\Infolists\Infolist;
-use Illuminate\Support\HtmlString;
 
-class DokumenSopResource extends Resource
+class MonitoringSopResource extends Resource
 {
     protected static ?string $model = DokumenSop::class;
     protected static ?string $navigationIcon = 'heroicon-o-presentation-chart-line';
     protected static ?string $navigationLabel = 'Monitoring SOP';
-    protected static ?string $pluralModelLabel = 'Data SOP Direktorat';
+    protected static ?string $pluralModelLabel = 'Monitoring SOP';
+    protected static ?string $navigationGroup = 'Data Seluruh SOP';
+    protected static ?int $navigationSort = 1;
+    protected static ?string $slug = 'monitoring-sop';
+
 
     // --- 1. SETTING READ ONLY ---
     public static function canCreate(): bool { return false; }
     public static function canEdit($record): bool { return false; }
     public static function canDelete($record): bool { return false; }
 
-    // --- 2. QUERY SCOPE (PENTING!) ---
-    // Hanya tampilkan SOP yang Unit Pemiliknya berada di bawah Direktorat user yang login
+    // --- 2. QUERY SCOPE (GLOBAL ACCESS) ---
+    // Update: Menampilkan SEMUA data tanpa batasan Direktorat user login
     public static function getEloquentQuery(): Builder
     {
-        $userDirektorat = Auth::user()->id_direktorat;
-
         return parent::getEloquentQuery()
-            ->where(function (Builder $query) use ($userDirektorat) {
-                // 1. SOP yang Dimiliki oleh Unit di bawah Direktorat user
-                $query->whereHas('unitPemilik', function (Builder $q) use ($userDirektorat) {
-                    $q->where('id_direktorat', $userDirektorat);
-                })
-                // 2. ATAU SOP Kategori 'SOP_AP' yang terkait dengan Unit di bawah Direktorat user
-                ->orWhere(function (Builder $q) use ($userDirektorat) {
-                     $q->where('kategori_sop', 'SOP_AP')
-                       ->where(function (Builder $subQ) use ($userDirektorat) {
-                           // 2a. Berlaku untuk SEMUA Unit
-                           $subQ->where('is_all_units', true)
-                           // 2b. Atau Terkait secara spesifik dengan unit di bawah direktorat
-                           ->orWhereHas('unitTerkait', function (Builder $relQ) use ($userDirektorat) {
-                               $relQ->where('id_direktorat', $userDirektorat);
-                           });
-                       });
-                });
-            })
+            // Kita hanya batasi Status (Hanya dokumen final yang boleh dilihat Direksi)
+            ->whereIn('status', ['AKTIF', 'KADALUARSA'])
             ->withoutGlobalScopes();
     }
 
@@ -62,13 +46,12 @@ class DokumenSopResource extends Resource
         return $form->schema([]);
     }
 
-    // --- 3. TAMPILAN VIEW (POP UP / HALAMAN) ---
-    // --- INFOLIST (POP-UP DETAIL & PREVIEW SOP) ---
+    // --- 3. INFOLIST (POP-UP DETAIL) ---
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
-                // Header: Judul Besar & Status
+                // Header
                 Infolists\Components\Section::make()
                     ->schema([
                         Infolists\Components\TextEntry::make('judul_sop')
@@ -77,7 +60,6 @@ class DokumenSopResource extends Resource
                             ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
                             ->columnSpanFull(),
 
-                        // Gunakan Grid 2 Kolom untuk detail
                         Infolists\Components\Grid::make(2)
                             ->schema([
                                 Infolists\Components\TextEntry::make('nomor_sk')
@@ -87,66 +69,58 @@ class DokumenSopResource extends Resource
                                 Infolists\Components\TextEntry::make('status')
                                     ->badge()
                                     ->color(fn (string $state): string => match ($state) {
-                                        'DALAM REVIEW' => 'warning',
-                                        'REVISI' => 'danger',
                                         'AKTIF' => 'success',
+                                        'KADALUARSA' => 'danger',
                                         default => 'gray',
                                     }),
+
+                                Infolists\Components\TextEntry::make('unitPemilik.nama_unit')
+                                    ->label('Unit Pemilik') // Penting agar tau punya siapa
+                                    ->badge()
+                                    ->color('info'),
 
                                 Infolists\Components\TextEntry::make('unitTerkait.nama_unit')
                                     ->label('Unit Terkait')
                                     ->badge()
-                                    ->color('info')
-                                    ->placeholder('Internal Unit')
-                                    ->formatStateUsing(function ($state, DokumenSop $record) {
-                                        if ($record->is_all_units) {
-                                            return 'SELURUH UNIT / INSTALASI';
-                                        }
-                                        return $state;
-                                    })
-                                    ->color(fn (DokumenSop $record) => $record->is_all_units ? 'success' : 'info'),
+                                    ->color('warning')
+                                    ->placeholder('-')
+                                    ->formatStateUsing(fn ($state, $record) => $record->is_all_units ? 'SELURUH UNIT' : $state),
                             ]),
                     ]),
 
-                // Section Validitas (3 TANGGAL PENTING)
+                // Validitas
                 Infolists\Components\Section::make('Validitas Dokumen')
                     ->schema([
                         Infolists\Components\Grid::make(3)
                             ->schema([
-                                // 1. Tgl Disahkan (TTD)
                                 Infolists\Components\TextEntry::make('tgl_pengesahan')
-                                    ->label('Disahkan (TTD)')
+                                    ->label('Disahkan')
                                     ->date('d F Y')
-                                    ->icon('heroicon-m-pencil-square')
-                                    ->placeholder('-'),
+                                    ->icon('heroicon-m-pencil-square'),
 
-                                // 2. Review Date
                                 Infolists\Components\TextEntry::make('tgl_review_berikutnya')
-                                    ->label('Review Date')
+                                    ->label('Jadwal Review')
                                     ->date('d F Y')
                                     ->icon('heroicon-m-clock')
-                                    ->color('warning')
-                                    ->placeholder('-'),
+                                    ->color('warning'),
 
-                                // 3. Expired Date
                                 Infolists\Components\TextEntry::make('tgl_kadaluarsa')
-                                    ->label('Expired Date')
+                                    ->label('Kadaluarsa')
                                     ->date('d F Y')
                                     ->icon('heroicon-m-calendar-days')
-                                    ->color('danger')
-                                    ->placeholder('-'),
+                                    ->color('danger'),
                             ]),
                     ]),
 
-                // PREVIEW PDF (DITENGAHKAN)
+                // Preview PDF
                 Infolists\Components\Section::make('Preview Dokumen')
                     ->schema([
                         Infolists\Components\TextEntry::make('file_path')
-                            ->label('') // Label kosong agar bersih
+                            ->label('')
                             ->view('filament.infolists.pdf-viewer')
                             ->columnSpanFull(),
                     ])
-                    ->collapsible(), // Bisa dilipat jika ingin ringkas
+                    ->collapsible(),
             ]);
     }
 
@@ -162,12 +136,19 @@ class DokumenSopResource extends Resource
                     ->description(fn ($record) => $record->nomor_sk ?? '-')
                     ->weight('bold'),
 
-                // Tampilkan Nama Unit (Agar Direksi tau ini SOP punya unit mana)
+                // Kolom Unit Pemilik
                 Tables\Columns\TextColumn::make('unitPemilik.nama_unit')
                     ->label('Unit Pemilik')
                     ->badge()
                     ->color('info')
                     ->sortable()
+                    ->searchable(),
+
+                // Kolom Direktorat (Baru: Agar Direksi mudah melihat ini dari Dir mana)
+                Tables\Columns\TextColumn::make('unitPemilik.direktorat.nama_direktorat')
+                    ->label('Direktorat')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true) // Tersembunyi default agar tidak penuh
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('kategori_sop')
@@ -179,46 +160,45 @@ class DokumenSopResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'AKTIF' => 'success',
                         'KADALUARSA' => 'danger',
+                        default => 'gray',
                     }),
 
-                // 5. Tanggal Berlaku
                 Tables\Columns\TextColumn::make('tgl_berlaku')
                     ->label('Tgl Berlaku')
                     ->date('d M Y')
                     ->sortable(),
 
-                // 6. Tanggal Kadaluarsa
                 Tables\Columns\TextColumn::make('tgl_kadaluarsa')
                     ->label('Kadaluarsa')
                     ->date('d M Y')
                     ->sortable()
-                    ->color(fn ($state) => $state && Carbon::parse($state)->isPast() ? 'danger' : 'success')
-                    ->description(function (DokumenSop $record) {
-                        if ($record->tgl_kadaluarsa && now()->diffInDays($record->tgl_kadaluarsa, false) <= 30) {
-                            return '🚨 Segera Habis';
-                        }
-                        return null;
-                    }),
+                    ->color(fn ($state) => $state && Carbon::parse($state)->isPast() ? 'danger' : 'success'),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                // Filter Unit Kerja (Memudahkan Direksi filter per anak buah)
-                Tables\Filters\SelectFilter::make('id_unit_pemilik')
-                    ->label('Filter per Unit')
-                    ->relationship('unitPemilik', 'nama_unit', function(Builder $query) {
-                        // Hanya munculkan unit di bawah direktorat dia
-                        return $query->where('id_direktorat', Auth::user()->id_direktorat);
-                    })
+                // 1. Filter Direktorat (BARU & PENTING)
+                // Memungkinkan Direksi memfilter SOP berdasarkan Direktorat tertentu
+                Tables\Filters\SelectFilter::make('direktorat')
+                    ->label('Filter Direktorat')
+                    ->relationship('unitPemilik.direktorat', 'nama_direktorat')
                     ->searchable()
                     ->preload(),
 
-                // Filter Kategori
+                // 2. Filter Unit Kerja (Global, semua unit muncul)
+                Tables\Filters\SelectFilter::make('id_unit_pemilik')
+                    ->label('Filter Unit Kerja')
+                    ->relationship('unitPemilik', 'nama_unit')
+                    ->searchable()
+                    ->preload(),
+
+                // 3. Filter Kategori
                 Tables\Filters\SelectFilter::make('kategori_sop')
                     ->options([
                         'SOP' => 'SOP Internal',
                         'SOP_AP' => 'SOP Antar Profesi',
                     ]),
 
+                // 4. Filter Status
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'AKTIF' => 'Aktif',
@@ -226,7 +206,6 @@ class DokumenSopResource extends Resource
                     ]),
             ])
             ->actions([
-                // Action Group: Lihat & Download
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->label('Detail')
@@ -256,8 +235,7 @@ class DokumenSopResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListDokumenSops::route('/'),
-            // 'view' => Pages\ViewDokumenSop::route('/{record}'), // Halaman view detail full page
+            'index' => Pages\ListSopMonitoring::route('/'),
         ];
     }
 }

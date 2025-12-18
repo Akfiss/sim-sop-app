@@ -49,12 +49,12 @@ class SopSampahResource extends Resource
                     ->limit(30),
 
                 Tables\Columns\TextColumn::make('unitPemilik.nama_unit')
-                    ->label('Unit')
+                    ->label('Unit Pemilik')
                     ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('deleted_at')
-                    ->label('Dihapus Pada')
+                    ->label('Waktu Dihapus')
                     ->dateTime('d M Y, H:i')
                     ->sortable()
                     ->color('danger'),
@@ -63,6 +63,8 @@ class SopSampahResource extends Resource
                 // 1. RESTORE
                 Tables\Actions\RestoreAction::make()
                     ->label('Pulihkan')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('success')
                     ->after(function (DokumenSop $record) {
                         // Log History
                         RiwayatSop::create([
@@ -72,19 +74,6 @@ class SopSampahResource extends Resource
                             'catatan' => 'Dokumen dipulihkan dari sampah (Trash) oleh Admin.',
                             'dokumen_path' => $record->file_path
                         ]);
-                    }),
-
-                // 2. FORCE DELETE
-                Tables\Actions\ForceDeleteAction::make()
-                    ->label('Hapus Permanen')
-                    ->icon('heroicon-o-x-circle')
-                    ->modalHeading('Hapus Dokumen Secara Permanen?')
-                    ->modalDescription('PERINGATAN: Tindakan ini akan menghapus data DAN FILE dari sistem selamanya. Data History juga akan ikut terhapus.')
-                    ->before(function (DokumenSop $record) {
-                        // Hapus file fisik
-                        if ($record->file_path) {
-                            Storage::disk('public')->delete($record->file_path);
-                        }
                     }),
             ])
             ->bulkActions([

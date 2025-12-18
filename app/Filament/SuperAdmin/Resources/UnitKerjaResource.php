@@ -29,23 +29,26 @@ class UnitKerjaResource extends Resource
                 // 1. Input ID Unit (Manual)
                 Forms\Components\TextInput::make('id_unit')
                     ->label('Kode Unit')
-                    ->maxLength(5)
+                    ->maxLength(10)
                     ->disabled()
                     ->placeholder('Otomatis membuat id unit')
-                    ->unique(ignoreRecord: true),
+                    ->unique(ignoreRecord: true)
+                    ->disabledOn('edit'),
 
                 // 2. Input Nama Unit
                 Forms\Components\TextInput::make('nama_unit')
                     ->label('Nama Unit Kerja')
                     ->required()
-                    ->maxLength(50),
+                    ->maxLength(50)
+                    ->disabledOn('edit')
+                    ->unique(ignoreRecord: true),
 
                 // 3. Dropdown Pilih Direktorat (Relasi)
                 Forms\Components\Select::make('id_direktorat')
                     ->label('Direktorat')
                     ->relationship('direktorat', 'nama_direktorat') // Magic method Filament
-                    ->searchable() // Agar bisa diketik saat mencari
-                    ->preload() // Load data di awal agar cepat
+                    ->searchable()
+                    ->preload()
                     ->required(),
             ]);
     }
