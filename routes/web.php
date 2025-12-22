@@ -21,3 +21,8 @@ Route::post('/reset-password', [ForgotPasswordController::class, 'reset'])->name
 
 // Route AJAX Summarize (Letakkan sebelum atau sesudah route landing page)
 Route::get('/sop/{id}/summarize', [LandingPageController::class, 'summarize'])->name('sop.summarize');
+
+// --- 4. RUTE PANDUAN ---
+use App\Http\Controllers\GuideController;
+Route::get('/panduan', [GuideController::class, 'index'])->name('guide.index');
+Route::get('/panduan/{role}', [GuideController::class, 'show'])->name('guide.show');
