@@ -3,7 +3,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center">
 
-                <a href="{{ route('landing-page') }}" @click.prevent="scrollToTop()" class="flex items-center space-x-3 group cursor-pointer">
+                <a href="{{ route('landing-page') }}" class="flex items-center space-x-3 group cursor-pointer">
                     <div class="relative">
                         <div class="absolute inset-0 bg-emerald-500 blur-lg opacity-20 rounded-full group-hover:opacity-40 transition duration-300"></div>
                         <img src="{{ asset('images/logo-rs.png') }}" alt="Logo RS" class="relative h-12 w-auto object-contain dark:bg-white/10 rounded-lg p-1 backdrop-blur-sm shadow-sm">
@@ -57,6 +57,13 @@
                         Fitur
                     </button>
 
+                    <button x-ref="alur"
+                            @click="active = 'alur'; updateRect($el); scrollToSection('alur-verifikasi')"
+                            class="relative z-10 px-5 py-2 text-sm font-semibold rounded-full transition-colors duration-300"
+                            :class="active === 'alur' ? 'text-brand-700 dark:text-brand-300' : 'text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400'">
+                        Alur Verifikasi
+                    </button>
+
                     <button x-ref="cari"
                             @click="active = 'cari'; updateRect($el); scrollToSection('dokumen')"
                             class="relative z-10 px-5 py-2 text-sm font-semibold rounded-full transition-colors duration-300"
@@ -108,6 +115,7 @@
             <div class="px-4 py-4 space-y-2">
                 <a href="{{ route('landing-page') }}" class="block px-4 py-3 rounded-lg {{ request()->routeIs('landing-page') ? 'bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5' }} font-medium">Beranda</a>
                 <button @click="mobileMenuOpen = false; scrollToSection('fitur')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Fitur</button>
+                <button @click="mobileMenuOpen = false; scrollToSection('alur-verifikasi')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Alur Verifikasi</button>
                 <button @click="mobileMenuOpen = false; scrollToSection('dokumen')" class="w-full text-left block px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium">Cari SOP</button>
                 <a href="{{ route('guide.index') }}" class="block px-4 py-3 rounded-lg {{ request()->routeIs('guide.*') ? 'bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5' }} font-medium">Panduan</a>
 

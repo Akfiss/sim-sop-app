@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lupa Password - SIM SOP</title>
+    <title>Lupa Kata Sandi - SIM SOP</title>
     <link rel="icon" href="{{ asset('images/faviconlogo-rs.svg') }}" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -43,8 +43,8 @@
 
         <div class="glass-card rounded-3xl p-8 md:p-10 shadow-2xl shadow-black/20">
             <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-800 font-display">Reset Password 🔒</h2>
-                <p class="text-gray-500 text-sm mt-1">Masukkan email terdaftar Anda, kami akan mengirimkan link reset.</p>
+                <h2 class="text-2xl font-bold text-gray-800 font-display">Atur Ulang Kata Sandi 🔒</h2>
+                <p class="text-gray-500 text-sm mt-1">Mohon masukkan alamat email yang terdaftar. Kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda.</p>
             </div>
 
             @if (session('status'))
@@ -57,7 +57,7 @@
             <form action="{{ route('password.email') }}" method="POST" class="space-y-6">
                 @csrf
                 <div class="space-y-1">
-                    <label for="email" class="block text-sm font-semibold text-gray-700 ml-1">Email Address</label>
+                    <label for="email" class="block text-sm font-semibold text-gray-700 ml-1">Alamat Email</label>
                     <div class="relative">
                          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -73,7 +73,7 @@
 
                 <button type="submit"
                     class="w-full flex justify-center py-3.5 px-4 rounded-xl shadow-lg shadow-brand-500/30 text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 transition-all duration-300 transform hover:-translate-y-0.5">
-                    Kirim Link Reset
+                    Kirim Tautan Atur Ulang
                 </button>
             </form>
 

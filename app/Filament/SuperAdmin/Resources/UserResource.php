@@ -11,6 +11,7 @@ use Filament\Tables;
 use Filament\Notifications\Notification;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class UserResource extends Resource
 {
@@ -50,6 +51,13 @@ class UserResource extends Resource
                             ->required(fn (string $operation): bool => $operation === 'create')
                             // Hanya simpan jika diisi (agar saat edit password lama tidak tertimpa null)
                             ->dehydrated(fn (?string $state) => filled($state))
+                            ->rule(Password::min(8)
+                                ->letters()
+                                ->mixedCase()
+                                ->numbers()
+                                ->symbols()
+                                ->uncompromised()
+                            )
                             ->maxLength(255),
                     ])->columns(2),
 

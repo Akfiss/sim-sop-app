@@ -99,11 +99,21 @@ class LandingPageController extends Controller
             $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}";
             
             // Prompt Engineering yang lebih tegas
-            $prompt = "Kamu adalah asisten AI profesional untuk Rumah Sakit. \n" .
-                      "Tugasmu: Buat ringkasan eksekutif dari SOP berikut dalam Bahasa Indonesia yang formal dan jelas. \n" .
-                      "PENTING: Output HARUS berupa HTML list (<ul><li>...</li></ul>) yang rapi. Jangan gunakan markdown ```html atau header lain, langsung tag <ul>. \n" .
-                      "Fokus pada: Tujuan, Prosedur Utama, dan Pihak Terkait.\n\n" .
-                      "ISI DOKUMEN:\n" . $text;
+            $prompt =   "Kamu adalah asisten AI profesional untuk lingkungan Rumah Sakit.\n" .
+                        "Tugas utama kamu adalah membuat RINGKASAN EKSEKUTIF dari dokumen SOP berikut.\n\n" .
+                        "KETENTUAN WAJIB:\n" .
+                        "1. Ringkasan HARUS mencakup poin-poin penting dari isi SOP secara menyeluruh.\n" .
+                        "2. Ringkasan HARUS terdiri dari minimal 7 (tujuh) kalimat informatif.\n" .
+                        "3. Setiap kalimat harus mencerminkan aspek penting SOP seperti: tujuan, ruang lingkup, kewajiban, larangan, prosedur utama, jangka waktu, konsekuensi, dan pihak terkait (jika ada).\n" .
+                        "4. Gunakan Bahasa Indonesia yang formal, jelas, dan sesuai standar dokumen resmi Rumah Sakit.\n\n" .
+
+                        "FORMAT OUTPUT (SANGAT PENTING):\n" .
+                        "- Output WAJIB berupa HTML list menggunakan tag <ul> dan <li>.\n" .
+                        "- Jangan gunakan markdown, jangan gunakan ```html, jangan gunakan heading atau teks di luar <ul>.\n" .
+                        "- Setiap <li> berisi satu kalimat ringkasan yang utuh dan bermakna.\n\n" .
+
+                        "ISI DOKUMEN SOP:\n" . $text;
+
 
             // Timeout 30 detik agar tidak hanging
             $response = Http::timeout(30)->withHeaders([

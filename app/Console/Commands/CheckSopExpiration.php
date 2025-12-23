@@ -48,7 +48,10 @@ class CheckSopExpiration extends Command
             ->get();
 
         foreach ($expiredSops as $sop) {
-            $sop->update(['status' => 'KADALUARSA']);
+            $sop->update([
+                'status' => 'KADALUARSA',
+                'tgl_review_berikutnya' => null,
+            ]);
 
             // REVISI: Kirim ke Unit Pemilik, BUKAN created_by
             $this->sendToUnit(

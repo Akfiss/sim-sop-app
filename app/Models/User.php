@@ -87,4 +87,15 @@ class User extends Authenticatable implements FilamentUser, HasName, CanResetPas
     {
         return $this->hasMany(RiwayatSop::class, 'id_user', 'id_user');
     }
+
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\CustomResetPassword($token));
+    }
 }

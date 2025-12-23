@@ -34,25 +34,6 @@ class SopAktifResource extends Resource
         return parent::getEloquentQuery()
             // 1. Pastikan HANYA status AKTIF
             ->where('status', 'AKTIF')
-
-            ->where(function (Builder $query) use ($userUnitId) {
-                // KONDISI A: SOP milik unit saya sendiri (baik saya yg buat atau teman se-unit)
-                // Kita cek berdasarkan 'id_unit_pemilik' di tabel SOP
-                $query->where('id_unit_pemilik', $userUnitId)
-
-                // KONDISI B: SOP dari unit LAIN (Lintas Unit)
-                ->orWhere(function (Builder $q) use ($userUnitId) {
-                    $q->where('kategori_sop', 'SOP_AP') // Harus kategori SOP AP
-                      ->where(function ($subQ) use ($userUnitId) {
-                          // Opsi 1: Lintas unit yang spesifik memilih unit saya
-                          $subQ->whereHas('unitTerkait', function ($relasi) use ($userUnitId) {
-                              $relasi->where('tb_unit_kerja.id_unit', $userUnitId);
-                          })
-                          // Opsi 2: Atau SOP AP yang berlaku untuk ALL UNITS
-                          ->orWhere('is_all_units', true);
-                      });
-                });
-            })
             ->withoutGlobalScopes();
     }
 
