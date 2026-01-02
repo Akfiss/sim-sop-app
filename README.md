@@ -38,28 +38,38 @@ Sistem ini menggunakan arsitektur **Multi-Panel** dengan **Unified Login System*
 -   **Akses Login:** Tombol "Masuk" mengarah ke halaman login terpusat (`/login`) yang berlaku untuk semua role.
 -   **Panduan Interaktif:** Halaman panduan penggunaan sistem untuk setiap role dengan search & filter.
 
-### 2. 📝 Panel Pengusul (Kepala Unit Kerja)
+### 2. � Panel Pengusul (Kepala Unit Kerja)
 
--   **SOP Regular & SOP AP:** Dua jenis SOP - Regular (Unit Tunggal) dan AP/Antar Profesi (Multi Unit).
--   **SOP AP "Seluruh Unit":** Toggle khusus untuk SOP yang berlaku di semua unit kerja.
--   **Monitoring Status:** Memantau status dokumen (AKTIF, KADALUARSA).
--   **Riwayat & Tracking:** Melihat histori perubahan dokumen SOP.
--   **Sistem Notifikasi:** Notifikasi realtime menggunakan Livewire untuk setiap perubahan status.
+-   **Read-Only Access:** Akses monitoring dan melihat dokumen SOP milik unit kerja masing-masing tanpa bisa mengubah data.
+-   **Monitoring SOP Unit:** Memantau SOP yang menjadi tanggung jawab unit kerja (sebagai pemilik atau unit terkait).
+-   **Preview & Download:** Melihat detail dan preview PDF, serta download dokumen SOP.
+-   **Status Tracking:** Memantau status dokumen (AKTIF, KADALUARSA).
+-   **Riwayat & Histori:** Melihat histori perubahan dokumen SOP.
+-   **Sistem Notifikasi:** Menerima notifikasi realtime saat SOP baru diterbitkan oleh Verifikator:
+    -   **SOP Regular:** Notifikasi hanya ke Unit Pemilik
+    -   **SOP AP:** Notifikasi ke Unit Pemilik + semua Unit Terkait
 -   **Lonceng Notifikasi:** Icon bell dengan counter notifikasi yang belum dibaca di navbar.
 
 ### 3. ✅ Panel Verifikator (Tim Mutu/Reviewer)
 
--   **Detail Dokumen:** Melihat detail dan preview PDF langsung di browser.
--   **Release System:** Menerbitkan SOP dengan auto-generate tanggal:
-    -   Tanggal Pengesahan (sesuai tanggal pengesahan pada dokumen fisik)
-    -   Tanggal Berlaku (fleksibel sesuai input user)
+-   **Upload & Terbitkan SOP:** Upload dokumen PDF dan menerbitkan SOP baru dengan data lengkap:
+    -   Pilih Unit Pemilik SOP
+    -   Pilih Jenis SOP (Regular atau AP/Antar Profesi)
+    -   Untuk SOP AP: Pilih Unit Terkait (multiple) atau toggle "Seluruh Unit"
+    -   Upload file PDF dengan validasi
+-   **Auto-Generate Tanggal:** Sistem otomatis set tanggal saat penerbitan:
+    -   Tanggal Pengesahan (fleksibel sesuai input)
+    -   Tanggal Berlaku (fleksibel sesuai input)
     -   Tanggal Review Berikutnya (1 tahun dari berlaku)
     -   Tanggal Kadaluarsa (3 tahun dari berlaku)
+-   **Status Otomatis AKTIF:** SOP langsung berstatus AKTIF saat diterbitkan.
 -   **Edit & Update SOP:** Edit data SOP yang sudah ada dengan tracking perubahan detail.
 -   **Soft Delete:** Menghapus SOP ke "Sampah" dengan kemampuan restore.
 -   **Histori Riwayat:** Melihat semua perubahan dokumen SOP lengkap dengan catatan.
 -   **Grouping Action:** Tombol aksi yang rapi dalam dropdown menu (View, Edit, Delete).
--   **Notifikasi Otomatis:** Sistem mengirim notifikasi ke Pengusul setiap ada aksi.
+-   **Notifikasi Otomatis:** Sistem mengirim notifikasi ke Unit Kerja terkait saat SOP diterbitkan:
+    -   **SOP Regular:** Notifikasi hanya ke Unit Pemilik
+    -   **SOP AP:** Notifikasi ke Unit Pemilik + semua Unit Terkait
 
 ### 4. 📊 Panel Direksi (Pimpinan)
 
@@ -110,50 +120,73 @@ Sistem ini menggunakan arsitektur **Multi-Panel** dengan **Unified Login System*
 
 ```mermaid
 graph TD
-    A[Pengusul Upload SOP] --> B{Jenis SOP?}
+    A[Verifikator Upload SOP] --> B{Jenis SOP?}
     B -->|SOP Regular| C[Pilih Unit Pemilik]
-    B -->|SOP AP| D[Pilih Multiple Unit Terkait]
-    C --> E[Upload PDF & Isi Data]
+    B -->|SOP AP| D[Pilih Unit Pemilik + Unit Terkait]
+    C --> E[Upload PDF & Isi Data Lengkap]
     D --> E
-    E --> F[Status: AKTIF]
-    F --> G[Verifikator Terima Notifikasi]
-    G --> H{Verifikator Action}
-    H -->|Approve| I[Set Tanggal Berlaku/Review/Kadaluarsa]
-    H -->|Edit Data| J[Update Info SOP]
-    I --> K[SOP Tampil di Landing Page]
-    J --> K
-    K --> L{Masa Berlaku}
-    L -->|< 2 Tahun| M[Status: AKTIF]
-    L -->|>= 2 Tahun| N[Status: KADALUARSA]
-    M --> O[Monitoring Dashboard Direksi]
-    N --> O
-    H -->|Delete| P[Soft Delete ke Sampah]
-    P --> Q[Bisa Restore atau Hapus Permanen]
+    E --> F[Set Tanggal Berlaku/Review/Kadaluarsa]
+    F --> G[Status: AKTIF Otomatis]
+    G --> H[SOP Tampil di Landing Page]
+    H --> I{Kirim Notifikasi}
+    I -->|SOP Regular| J[Notifikasi ke Unit Pemilik]
+    I -->|SOP AP| K[Notifikasi ke Unit Pemilik + Unit Terkait]
+    J --> L[Pengusul Melihat di Panel]
+    K --> L
+    L --> M{Monitoring}
+    M --> N[Dashboard Pengusul - Read Only]
+    M --> O[Dashboard Direksi - Read Only]
+    M --> P[Dashboard Verifikator - Full Access]
+    P --> Q{Verifikator Action}
+    Q -->|Edit Data| R[Update Info SOP]
+    Q -->|Delete| S[Soft Delete ke Sampah]
+    R --> T[Create Riwayat Perubahan]
+    S --> U[Bisa Restore atau Hapus Permanen]
+    T --> V{Masa Berlaku}
+    V -->|< 3 Tahun| W[Status: AKTIF]
+    V -->|>= 3 Tahun| X[Status: KADALUARSA]
+    W --> M
+    X --> Y[Hilang dari Landing Page]
 ```
 
 ### Alur Notifikasi
 
-1. **Verifikator Upload SOP Baru**
+1. **Verifikator Terbitkan SOP Baru**
 
-    - Sistem otomatis set status AKTIF
-    - Sistem create riwayat di `tb_riwayat_sop`
-    - Sistem broadcast notifikasi ke Unit Pemilik
-    - Kepala Unit melihat notifikasi sop terbit
+    - Verifikator upload PDF, pilih unit pemilik, dan isi data lengkap
+    - Sistem otomatis set status **AKTIF**
+    - Sistem create riwayat di `tb_riwayat_sop` (aksi: "SOP Diterbitkan")
+    - Sistem broadcast notifikasi berdasarkan jenis SOP:
+        - **SOP Regular:** Notifikasi hanya ke Pengusul/Kepala Unit Pemilik
+        - **SOP AP:** Notifikasi ke Pengusul Unit Pemilik + semua Pengusul Unit Terkait
+    - Kepala Unit melihat notifikasi "SOP Baru Diterbitkan" di panel mereka
+    - SOP langsung tampil di Landing Page publik
 
-2. **Verifikator Edit/Delete SOP**
+2. **Verifikator Edit SOP**
 
     - Sistem update data dokumen
-    - Sistem create riwayat perubahan
+    - Sistem create riwayat perubahan dengan detail yang diubah
+    - Notifikasi dikirim ke unit terkait (sesuai jenis SOP)
 
-3. **SOP Mencapai Masa Review (1 Tahun)**
+3. **Verifikator Delete SOP**
+
+    - Soft delete SOP ke "Sampah"
+    - Sistem create riwayat "SOP Dihapus"
+    - SOP hilang dari panel Pengusul dan Landing Page
+    - Verifikator bisa restore atau hapus permanen
+
+4. **SOP Mencapai Masa Review (1 Tahun)**
 
     - Sistem menandai SOP perlu review (belum diimplementasi auto-check)
-    - Admin/Verifikator dapat filter SOP yang perlu review
+    - Verifikator dapat filter SOP yang perlu review
+    - Verifikator melakukan review dan update jika perlu
 
-4. **SOP Kadaluarsa (3 Tahun)**
-    - Status otomatis berubah menjadi KADALUARSA
+5. **SOP Kadaluarsa (3 Tahun)**
+    - Status otomatis berubah menjadi **KADALUARSA**
     - SOP hilang dari landing page publik
+    - SOP masih tampil di panel internal dengan status KADALUARSA
     - Dashboard menampilkan statistik SOP kadaluarsa
+    - Verifikator dapat menerbitkan revisi SOP baru
 
 ### Alur Login & Authentication
 
