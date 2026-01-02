@@ -961,7 +961,9 @@ Projek ini dikembangkan untuk RSUP Prof. Dr. I.G.N.G. Ngoerah. Untuk kontribusi 
 
 ## 📄 Lisensi
 
-Projek ini adalah milik RSUP Prof. Dr. I.G.N.G. Ngoerah dan dilindungi oleh hak cipta internal.
+Projek ini dilisensikan di bawah [MIT License](LICENSE).
+
+Copyright © 2026 Akfiss - RSUP Prof. Dr. I.G.N.G. Ngoerah
 
 ---
 
